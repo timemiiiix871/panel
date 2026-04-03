@@ -34,11 +34,34 @@
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
         }
 
-        thead th {
+        /* Стили для фиксации столбцов */
+        .sticky-col {
             position: sticky;
-            top: 0;
-            z-index: 30;
+            left: 0;
+            z-index: 20;
+            background: white;
+        }
+        
+        thead th.sticky-col {
+            z-index: 40;
             background: #f8fafc;
+        }
+
+        .sticky-col-2 {
+            position: sticky;
+            left: 64px; /* ширина первого столбца */
+            z-index: 20;
+            background: white;
+        }
+
+        thead th.sticky-col-2 {
+            z-index: 40;
+            background: #f8fafc;
+        }
+
+        tr:hover .sticky-col,
+        tr:hover .sticky-col-2 {
+            background: #f8fafc; /* соответствие hover-эффекту строки */
         }
     </style>
 </head>
@@ -83,30 +106,32 @@
         ];
 
         function App() {
-          // Инициализация из localStorage
-          const [seniorNick, setSeniorNick] = useState(() => {
-            return localStorage.getItem('tp_senior_nick') || '';
-          });
-          
+          const [seniorNick, setSeniorNick] = useState(() => localStorage.getItem('tp_senior_nick') || '');
           const [candidates, setCandidates] = useState(() => {
             const saved = localStorage.getItem('tp_candidates');
             return saved ? JSON.parse(saved) : [{ id: 1, name: 'Кандидат 1', info: '', answers: {} }];
           });
 
-          const topScrollRef = useRef(null);
           const tableScrollRef = useRef(null);
+          const topScrollRef = useRef(null);
           const tableRef = useRef(null);
-          const [tableWidth, setTableWidth] = useState(0);
+          const topScrollInnerRef = useRef(null);
 
-          // Эффекты для сохранения
           useEffect(() => {
             localStorage.setItem('tp_senior_nick', seniorNick);
           }, [seniorNick]);
 
           useEffect(() => {
             localStorage.setItem('tp_candidates', JSON.stringify(candidates));
+            // Обновляем ширину верхнего скролла после изменения данных
+            updateTopScrollWidth();
           }, [candidates]);
 
+          useEffect(() => {
+            if (window.lucide) window.lucide.createIcons();
+          });
+
+          // Синхронизация скроллов
           const handleTopScroll = () => {
             if (tableScrollRef.current && topScrollRef.current) {
               tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
@@ -114,24 +139,22 @@
           };
 
           const handleTableScroll = () => {
-            if (topScrollRef.current && tableScrollRef.current) {
+            if (tableScrollRef.current && topScrollRef.current) {
               topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
             }
           };
 
-          useEffect(() => {
-            const observer = new ResizeObserver(entries => {
-              for (let entry of entries) {
-                setTableWidth(entry.target.scrollWidth);
-              }
-            });
-            if (tableRef.current) observer.observe(tableRef.current);
-            return () => observer.disconnect();
-          }, [candidates]);
+          const updateTopScrollWidth = () => {
+            if (tableRef.current && topScrollInnerRef.current) {
+              topScrollInnerRef.current.style.width = `${tableRef.current.offsetWidth}px`;
+            }
+          };
 
           useEffect(() => {
-            if (window.lucide) window.lucide.createIcons();
-          });
+            window.addEventListener('resize', updateTopScrollWidth);
+            updateTopScrollWidth();
+            return () => window.removeEventListener('resize', updateTopScrollWidth);
+          }, []);
 
           const addCandidate = () => {
             const newId = candidates.length > 0 ? Math.max(...candidates.map(c => c.id)) + 1 : 1;
@@ -237,13 +260,14 @@
               </div>
 
               <div className="max-w-[1650px] mx-auto bg-white rounded-[32px] shadow-2xl shadow-slate-200/60 border border-slate-200/60 overflow-hidden">
+                {/* Верхний скроллбар */}
                 <div 
                   ref={topScrollRef}
                   onScroll={handleTopScroll}
-                  className="overflow-x-auto custom-scrollbar border-b border-slate-100 bg-slate-50/50"
-                  style={{ height: '10px' }}
+                  className="overflow-x-auto custom-scrollbar bg-slate-50 border-b border-slate-100"
+                  style={{ height: '12px' }}
                 >
-                  <div style={{ width: `${tableWidth}px`, height: '1px' }}></div>
+                  <div ref={topScrollInnerRef} style={{ height: '1px' }}></div>
                 </div>
 
                 <div 
@@ -254,8 +278,8 @@
                   <table ref={tableRef} className="w-full text-left border-collapse table-fixed">
                     <thead>
                       <tr className="bg-slate-50/80 backdrop-blur-sm">
-                        <th className="p-6 border-b border-slate-200 font-bold text-slate-400 w-16 text-center uppercase text-xs tracking-widest"></th>
-                        <th className="p-6 border-b border-slate-200 font-bold text-slate-500 w-[550px] uppercase text-xs tracking-widest">Вопросы для кандидатов и ответы</th>
+                        <th className="p-6 border-b border-slate-200 font-bold text-slate-400 w-16 text-center uppercase text-xs tracking-widest sticky-col border-r"></th>
+                        <th className="p-6 border-b border-slate-200 font-bold text-slate-500 w-[550px] uppercase text-xs tracking-widest sticky-col-2 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">Вопросы для кандидатов и ответы</th>
                         {candidates.map((candidate) => (
                           <th key={candidate.id} className="border-b border-l border-slate-200 w-[300px] p-0 group">
                             <div className="p-6">
@@ -288,8 +312,8 @@
                         if (item.isIntro) return null;
                         return (
                           <tr key={qIndex} className="group hover:bg-slate-50/40 transition-all">
-                            <td className="p-6 text-center text-slate-300 font-black text-lg italic align-top">{qIndex}</td>
-                            <td className="p-6 align-top">
+                            <td className="p-6 text-center text-slate-300 font-black text-lg italic align-top sticky-col border-r">{qIndex}</td>
+                            <td className="p-6 align-top sticky-col-2 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">
                               <div className="text-slate-800 font-bold mb-4 text-[15px] leading-snug group-hover:text-indigo-900 transition-colors">{item.q}</div>
                               <div className="relative pl-5 py-3 pr-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/80">
                                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 rounded-l-2xl"></div>
