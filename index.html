@@ -83,15 +83,29 @@
         ];
 
         function App() {
-          const [seniorNick, setSeniorNick] = useState('');
-          const [candidates, setCandidates] = useState([
-            { id: 1, name: 'Кандидат 1', info: '', answers: {} }
-          ]);
+          // Инициализация из localStorage
+          const [seniorNick, setSeniorNick] = useState(() => {
+            return localStorage.getItem('tp_senior_nick') || '';
+          });
+          
+          const [candidates, setCandidates] = useState(() => {
+            const saved = localStorage.getItem('tp_candidates');
+            return saved ? JSON.parse(saved) : [{ id: 1, name: 'Кандидат 1', info: '', answers: {} }];
+          });
 
           const topScrollRef = useRef(null);
           const tableScrollRef = useRef(null);
           const tableRef = useRef(null);
           const [tableWidth, setTableWidth] = useState(0);
+
+          // Эффекты для сохранения
+          useEffect(() => {
+            localStorage.setItem('tp_senior_nick', seniorNick);
+          }, [seniorNick]);
+
+          useEffect(() => {
+            localStorage.setItem('tp_candidates', JSON.stringify(candidates));
+          }, [candidates]);
 
           const handleTopScroll = () => {
             if (tableScrollRef.current && topScrollRef.current) {
@@ -125,7 +139,18 @@
           };
 
           const removeCandidate = (id) => {
-            setCandidates(candidates.filter(c => c.id !== id));
+            if (confirm('Вы уверены, что хотите удалить кандидата и все его данные?')) {
+              setCandidates(candidates.filter(c => c.id !== id));
+            }
+          };
+
+          const resetData = () => {
+            if (confirm('Очистить все данные текущего обзвона?')) {
+              setSeniorNick('');
+              setCandidates([{ id: 1, name: 'Кандидат 1', info: '', answers: {} }]);
+              localStorage.removeItem('tp_senior_nick');
+              localStorage.removeItem('tp_candidates');
+            }
           };
 
           const updateCandidateField = (id, field, value) => {
@@ -194,6 +219,9 @@
                           </button>
                           <button onClick={exportToCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-500/30 text-white border border-white/30 px-6 py-3.5 rounded-2xl font-bold transition-all hover:bg-indigo-500/50 backdrop-blur-sm">
                             <i data-lucide="file-down" className="w-5 h-5"></i> Отчет
+                          </button>
+                          <button onClick={resetData} title="Полная очистка" className="sm:flex-none flex items-center justify-center bg-rose-500/30 text-white border border-white/30 p-3.5 rounded-2xl transition-all hover:bg-rose-500/50 backdrop-blur-sm">
+                            <i data-lucide="refresh-ccw" className="w-5 h-5"></i>
                           </button>
                         </div>
                       </div>
@@ -295,6 +323,11 @@
                     </tbody>
                   </table>
                 </div>
+              </div>
+              <div className="max-w-[1650px] mx-auto mt-6 flex justify-end">
+                <span className="text-xs text-slate-400 flex items-center gap-2">
+                   <i data-lucide="save" className="w-3 h-3"></i> Все данные автоматически сохраняются в вашем браузере
+                </span>
               </div>
             </div>
           );
