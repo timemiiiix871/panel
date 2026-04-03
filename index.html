@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель обзвона | Модерация ТП</title>
+    <!-- Подключаем Tailwind CSS для стилей -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключаем React и Babel для работы кода в браузере -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Подключаем иконки Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .lucide { width: 1.2em; height: 1.2em; vertical-align: middle; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const QUESTIONS_DATA = [
+          {
+            q: "Представьтесь пожалуйста, расскажите о себе, как вас зовут и сколько вам лет?",
+            isIntro: true
+          },
+          {
+            q: "Разрешено публиковать объявление с покупкой/продажей 'Пустого номера'?",
+            a: "Нет, продажа пустого номера запрещена и наказывается 11 пунктом правил."
+          },
+          {
+            q: "В каком канале публикуется объявление об обмене автомобиля на тактический рюкзак?",
+            a: "Допустимого канала для такого рода объявлений нет."
+          },
+          {
+            q: "Сколько слов Caps Lock'ом можно написать в одном объявлении?",
+            a: "Максимум 3 слова можно написать Caps'ом."
+          },
+          {
+            q: "Допустима ли купля/продажа номеров на транспорт с указанием запретных слов?",
+            a: "Нет, использование запретных слов на номерах недопустимо, поскольку они так же модерируются."
+          },
+          {
+            q: "Разрешается ли делать пропуски после каждой написанной строки в объявлении?",
+            a: "Нет, так как пропуски через каждую строку текста искусственно увеличивают текст."
+          },
+          {
+            q: "Разрешено ли объявление не на языке сервера?",
+            a: "Язык общения на сервере - русский. Объявления должны быть написаны на языке сервера."
+          },
+          {
+            q: "Какое максимальное количество транспортных средств можно упомянуть в одном объявлении при купле/продаже?",
+            a: "Не больше 5 авто. Неопределенная марка авто/выкуп авто, приравнивается к единице транспортного средства."
+          },
+          {
+            q: "Разрешено ли продавать ключи от авто?",
+            a: "Нет, такие действия запрещены."
+          },
+          {
+            q: "Допускаются ли объявления о покупке/продаже семьи?",
+            a: "Подобные объявления не допускаются, так как нет функционала, способного передать семью."
+          },
+          {
+            q: "Пользователь опубликовал объявление о продаже 'АЗС №2' за 3млн. А ниже пользователь пишет, что купит данный бизнес за 2млн. Считается ли это нарушением?",
+            a: "Не. Если владелец бизнеса опубликовал объявление о продаже, ему необходимо писать в личные сообщения для торгов. Иные объявления о купле с занижением цены считаются неприемлемыми."
+          },
+          {
+            q: "На какой максимальный срок можно сдать транспорт в аренду?",
+            a: "Транспорт можно сдавать в аренду не более чем на 7 дней."
+          },
+          {
+            q: "Разрешается ли заключать OOC договор на сервере?",
+            a: "Нет, такие действия запрещены."
+          },
+          {
+            q: "Разрешен ли никнейм 'Продам обвесы/колеса, пишите в ЛС'?",
+            a: "Да, такие никнеймы не нарушают правила."
+          },
+          {
+            q: "Допускается ли продажа бизнесов за реальные деньги?",
+            a: "Нет, продажа бизнеса за реальные деньги строго запрещена, исключений нет."
+          },
+          {
+            q: "Разрешена ли реклама нефункционального бизнеса, например, кредитная компания?",
+            a: "Нет, такая реклама запрещена, только функциональный бизнес подходит для публикации."
+          },
+          {
+            q: "Можно ли рекламировать услуги, не связанные с сервером, например, продажу аккаунтов GTA 5?",
+            a: "Нет, канала для рекламы услуг не существует."
+          },
+          {
+            q: "Разрешено ли продавать/покупать варежки, которые имеют невидимую иконку в инвентаре?",
+            a: "Нет. Данные варежки приравнены к невидимой одежде, так как не имеют иконки."
+          },
+          {
+            q: "Можно ли публиковать объявление об продаже/обмене элемента одежды с трейд-локом?",
+            a: "Нет, такие объявления запрещены для публикации."
+          },
+          {
+            q: "В какой канал публикуется объявление о продаже предмета 'Медицинская сумка'?",
+            a: "В категорию \"Прочее\"."
+          },
+          {
+            q: "В какой канал публикуется объявление о поиске людей для помощи в выполнении квестов из БП?",
+            a: "Такое сообщение допустимо в категории \"Поиск\"."
+          },
+          {
+            q: "Разрешено ли написание транслитом в объявлениях?",
+            a: "Нет, транслит запрещен."
+          },
+          {
+            q: "В какой канал публикуется объявление о подселении? Разрешено ли арендовать дом с мастерской?",
+            a: "Аренда дома публикуется в канал «Аренда». Нет, так как для использования мастерской необходим доступ к кладовке. Доспут к кладовке можно получитьь только через ключи, а сделки с ключами запрещены."
+          },
+          {
+            q: "Допускаются ли элементы разных категорий на одном изображении?",
+            a: "Нет. Каждое изображение должно отображать свою категорию."
+          },
+          {
+            q: "В каких случаях необходимо указывать стоимость товара?",
+            a: "При продаже товара."
+          },
+          {
+            q: "В каком канале публикуется объявление о поиске владельца бизнеса?",
+            a: "В разделе \"Бизнес\"."
+          },
+          {
+            q: "Разрешено ли продавать двум людям один и тот же дом?",
+            a: "Да, если нет нарушения КД в канале."
+          },
+          {
+            q: "Как работает система тикетов на торговой площадке и можно ли через нее получить роль Approved?",
+            a: "Система тикетов позволяет решать спорные ситуации с модераторами. Получение роли Approved через тикеты невозможно."
+          },
+          {
+            q: "Можно ли продать обвес на автомобиль? В каком канале?",
+            a: "Да, продажа обвесов допустима в канале \"Тюнинг\"."
+          },
+          {
+            q: "Можно ли в объявлении о наборе в семью добавлять ссылку на семейный дискорд?",
+            a: "Нет, так как канал семьи не является официальным ресурсом проекта."
+          },
+          {
+            q: "Можно ли в канале 'Реклама' опубликовать видео своей стрельбы?",
+            a: "Нет, ссылки на видеоролики и прочий материал, не связанный с официальными ресурсами - запрещен."
+          }
+        ];
+
+        function App() {
+          const [seniorNick, setSeniorNick] = useState('');
+          const [candidates, setCandidates] = useState([
+            { id: 1, name: 'Кандидат 1', info: '', answers: {} }
+          ]);
+
+          // Инициализация иконок Lucide после каждого обновления страницы
+          useEffect(() => {
+            if (window.lucide) {
+              window.lucide.createIcons();
+            }
+          });
+
+          const addCandidate = () => {
+            const newId = candidates.length > 0 ? Math.max(...candidates.map(c => c.id)) + 1 : 1;
+            setCandidates([...candidates, { id: newId, name: `Кандидат ${newId}`, info: '', answers: {} }]);
+          };
+
+          const removeCandidate = (id) => {
+            setCandidates(candidates.filter(c => c.id !== id));
+          };
+
+          const updateCandidateField = (id, field, value) => {
+            setCandidates(candidates.map(c => c.id === id ? { ...c, [field]: value } : c));
+          };
+
+          const updateAnswer = (candidateId, questionIndex, value) => {
+            setCandidates(candidates.map(c => {
+              if (c.id === candidateId) {
+                return { ...c, answers: { ...c.answers, [questionIndex]: value } };
+              }
+              return c;
+            }));
+          };
+
+          const exportToCSV = () => {
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            if (seniorNick) csvContent += `Сеньор:;${seniorNick}\n\n`;
+            const headers = ['№', 'Вопрос', ...candidates.map(c => c.name)];
+            csvContent += headers.join(';') + '\n';
+            const infoRows = [['-', 'Информация о кандидате', ...candidates.map(c => c.info.replace(/\n/g, ' '))]];
+            infoRows.forEach(row => csvContent += row.join(';') + '\n');
+            QUESTIONS_DATA.forEach((item, idx) => {
+              if (item.isIntro) return;
+              const row = [idx, `"${item.q.replace(/"/g, '""')}"`, ...candidates.map(c => `"${c.answers[idx] || ''}"`)];
+              csvContent += row.join(';') + '\n';
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `обзвон_сеньор_${seniorNick || 'результаты'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+
+          const getSelectColor = (val) => {
+            switch(val) {
+              case 'да': return 'bg-emerald-50 text-emerald-700 border-emerald-300';
+              case 'нет': return 'bg-rose-50 text-rose-700 border-rose-300';
+              case '50/50': return 'bg-amber-50 text-amber-700 border-amber-300';
+              case 'бред': return 'bg-slate-100 text-slate-600 border-slate-300';
+              default: return 'bg-white text-slate-500 border-slate-200';
+            }
+          };
+
+          return (
+            <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8">
+              <div className="max-w-7xl mx-auto mb-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                  <div className="flex-1 w-full">
+                    <h1 className="text-xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                      <span className="w-2 h-8 bg-indigo-600 rounded-full"></span>
+                      Модерация Торговой Площадки
+                    </h1>
+                    <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-xl shadow-sm italic">
+                      Приветствую. Вы попали на обзвон на пост модератора торговой площадки. Представьтесь пожалуйста, расскажите о себе, как вас зовут и сколько вам лет.
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
+                    <div className="relative">
+                      <i data-lucide="shield-check" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                      <input 
+                        type="text"
+                        placeholder="Никнейм сеньора"
+                        value={seniorNick}
+                        onChange={(e) => setSeniorNick(e.target.value)}
+                        className="w-full md:w-64 pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all font-medium text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={addCandidate} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-md active:scale-95">
+                        <i data-lucide="user-plus"></i> Добавить
+                      </button>
+                      <button onClick={exportToCSV} className="flex-1 flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm">
+                        <i data-lucide="download"></i> Экспорт
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden text-[14px]">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="bg-slate-100 p-4 border-b border-slate-200 font-semibold text-slate-600 w-16 text-center">№</th>
+                        <th className="bg-slate-100 p-4 border-b border-slate-200 font-semibold text-slate-600 min-w-[400px]">Вопросы и Ответы</th>
+                        {candidates.map((candidate) => (
+                          <th key={candidate.id} className="bg-slate-50 border-b border-l border-slate-200 min-w-[240px] w-[240px] p-4">
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <input 
+                                type="text" 
+                                value={candidate.name}
+                                onChange={(e) => updateCandidateField(candidate.id, 'name', e.target.value)}
+                                className="bg-white font-bold text-slate-900 border border-slate-200 p-1.5 w-full rounded outline-none text-sm"
+                              />
+                              {candidates.length > 1 && (
+                                <button onClick={() => removeCandidate(candidate.id)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                  <i data-lucide="trash-2"></i>
+                                </button>
+                              )}
+                            </div>
+                            <textarea 
+                              placeholder="Инфо о кандидате..."
+                              rows="3"
+                              value={candidate.info}
+                              onChange={(e) => updateCandidateField(candidate.id, 'info', e.target.value)}
+                              className="w-full p-2 text-xs bg-white border border-slate-200 rounded outline-none resize-none"
+                            />
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {QUESTIONS_DATA.map((item, qIndex) => {
+                        if (item.isIntro) return null;
+                        return (
+                          <tr key={qIndex} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-4 border-b border-slate-100 text-center text-slate-400 font-medium align-top">{qIndex}</td>
+                            <td className="p-4 border-b border-slate-100 align-top">
+                              <div className="text-slate-800 font-medium mb-2">{item.q}</div>
+                              <div className="text-[13px] bg-emerald-50 text-emerald-900 p-3 rounded-lg border border-emerald-100">
+                                <span className="font-bold text-emerald-700 block mb-1 uppercase text-[10px]">Верный ответ:</span>
+                                {item.a}
+                              </div>
+                            </td>
+                            {candidates.map(candidate => (
+                              <td key={`${candidate.id}-${qIndex}`} className="border-b border-l border-slate-100 p-4 align-top">
+                                <select
+                                  value={candidate.answers[qIndex] || ''}
+                                  onChange={(e) => updateAnswer(candidate.id, qIndex, e.target.value)}
+                                  className={`w-full p-2 border rounded outline-none font-semibold text-sm cursor-pointer ${getSelectColor(candidate.answers[qIndex])}`}
+                                >
+                                  <option value="" disabled>— Выбор —</option>
+                                  <option value="да">Да (Верно)</option>
+                                  <option value="нет">Нет (Неверно)</option>
+                                  <option value="50/50">50 / 50</option>
+                                  <option value="бред">Бред / Ошибки</option>
+                                </select>
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
