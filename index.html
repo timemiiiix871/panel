@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель обзвона | Модерация ТП</title>
+    <title>Обзвон на ТП | Панель</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -14,25 +14,26 @@
         body { font-family: 'Inter', sans-serif; }
         .lucide { width: 1.2em; height: 1.2em; vertical-align: middle; }
         
-        /* Стили скроллбаров */
         .custom-scrollbar::-webkit-scrollbar {
-            height: 10px;
-            width: 10px;
+            height: 8px;
+            width: 8px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 5px;
+            background: #f8fafc;
+            border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
-            border-radius: 5px;
-            border: 2px solid #f1f5f9;
+            border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
 
-        /* Фиксация шапки */
+        .header-gradient {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
         thead th {
             position: sticky;
             top: 0;
@@ -41,7 +42,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-[#f3f4f9]">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -58,7 +59,7 @@
           { q: "Какое максимальное количество транспортных средств можно упомянуть в одном объявлении при купле/продаже?", a: "Не больше 5 авто. Неопределенная марка авто/выкуп авто, приравнивается к единице транспортного средства." },
           { q: "Разрешено ли продавать ключи от авто?", a: "Нет, такие действия запрещены." },
           { q: "Допускаются ли объявления о покупке/продаже семьи?", a: "Подобные объявления не допускаются, так как нет функционала, способного передать семью." },
-          { q: "Пользователь опубликовал объявление о продаже 'АЗС №2' за 3млн. А ниже пользователь пишет, что купит данный бизнес за 2млн. Считается ли это нарушением?", a: "Не. Если владелец бизнеса опубликовал объявление о продаже, ему необходимо писать в личные сообщения для торгов. Иные объявления о купле с занижением цены считаются неприемлемыми." },
+          { q: "Пользователь опубликовал объявление о продаже 'АЗС №2' за 3млн. А ниже пользователь пишет, что купит данный бизнес за 2млн. Считается ли это нарушением?", a: "Нет. Если владелец бизнеса опубликовал объявление о продаже, ему необходимо писать в личные сообщения для торгов. Иные объявления о купле с занижением цены считаются неприемлемыми." },
           { q: "На какой максимальный срок можно сдать транспорт в аренду?", a: "Транспорт можно сдавать в аренду не более чем на 7 дней." },
           { q: "Разрешается ли заключать OOC договор на сервере?", a: "Нет, такие действия запрещены." },
           { q: "Разрешен ли никнейм 'Продам обвесы/колеса, пишите в ЛС'?", a: "Да, такие никнеймы не нарушают правила." },
@@ -92,7 +93,6 @@
           const tableRef = useRef(null);
           const [tableWidth, setTableWidth] = useState(0);
 
-          // Синхронизация скроллов
           const handleTopScroll = () => {
             if (tableScrollRef.current && topScrollRef.current) {
               tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
@@ -105,7 +105,6 @@
             }
           };
 
-          // Отслеживание ширины таблицы для верхнего скролла
           useEffect(() => {
             const observer = new ResizeObserver(entries => {
               for (let entry of entries) {
@@ -143,7 +142,7 @@
           const exportToCSV = () => {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
             if (seniorNick) csvContent += `Сеньор:;${seniorNick}\n\n`;
-            const headers = ['№', 'Вопрос', ...candidates.map(c => c.name)];
+            const headers = ['ID', 'Вопрос', ...candidates.map(c => c.name)];
             csvContent += headers.join(';') + '\n';
             QUESTIONS_DATA.forEach((item, idx) => {
               if (item.isIntro) return;
@@ -152,59 +151,69 @@
             });
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `обзвон_${seniorNick || 'результаты'}.csv`);
+            link.setAttribute("download", `обзвон_ТП_${seniorNick || 'результаты'}.csv`);
             link.click();
           };
 
           const getSelectColor = (val) => {
             switch(val) {
-              case 'да': return 'bg-emerald-50 text-emerald-700 border-emerald-300';
-              case 'нет': return 'bg-rose-50 text-rose-700 border-rose-300';
-              case '50/50': return 'bg-amber-50 text-amber-700 border-amber-300';
+              case 'да': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+              case 'нет': return 'bg-rose-50 text-rose-700 border-rose-200';
+              case '50/50': return 'bg-amber-50 text-amber-700 border-amber-200';
               case 'бред': return 'bg-slate-100 text-slate-600 border-slate-300';
-              default: return 'bg-white text-slate-500 border-slate-200';
+              default: return 'bg-white text-slate-400 border-slate-200';
             }
           };
 
           return (
-            <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-              <div className="max-w-[1600px] mx-auto mb-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                  <div className="flex-1 w-full">
-                    <h1 className="text-xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                      <span className="w-2 h-8 bg-indigo-600 rounded-full"></span>
-                      Модерация Торговой Площадки
-                    </h1>
-                    <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-xl shadow-sm italic text-indigo-900 font-medium">
-                      Приветствую. Представьтесь пожалуйста, расскажите о себе, как вас зовут и сколько вам лет.
+            <div className="min-h-screen p-4 md:p-10 text-slate-900">
+              <div className="max-w-[1650px] mx-auto mb-8">
+                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 overflow-hidden border border-white">
+                  <div className="header-gradient p-8 text-white">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                      <div className="flex items-center gap-5">
+                        <div className="bg-white/20 p-4 rounded-2xl backdrop-blur-md">
+                          <i data-lucide="shield-check" className="w-10 h-10"></i>
+                        </div>
+                        <div>
+                          <h1 className="text-3xl font-extrabold tracking-tight">Обзвон на Торговую Площадку</h1>
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                        <div className="relative w-full sm:w-72">
+                          <i data-lucide="user" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 w-4 h-4"></i>
+                          <input 
+                            type="text" placeholder="Никнейм сеньора..." value={seniorNick}
+                            onChange={(e) => setSeniorNick(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-2xl outline-none focus:bg-white/20 placeholder:text-white/50 text-white font-medium transition-all"
+                          />
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <button onClick={addCandidate} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white text-indigo-600 px-6 py-3.5 rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                            <i data-lucide="user-plus" className="w-5 h-5"></i> Добавить
+                          </button>
+                          <button onClick={exportToCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-500/30 text-white border border-white/30 px-6 py-3.5 rounded-2xl font-bold transition-all hover:bg-indigo-500/50 backdrop-blur-sm">
+                            <i data-lucide="file-down" className="w-5 h-5"></i> Отчет
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
-                    <input 
-                      type="text" placeholder="Никнейм сеньора" value={seniorNick}
-                      onChange={(e) => setSeniorNick(e.target.value)}
-                      className="w-full md:w-64 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 font-medium text-sm"
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={addCandidate} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-md active:scale-95">
-                        <i data-lucide="user-plus"></i> Добавить
-                      </button>
-                      <button onClick={exportToCSV} className="flex-1 flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm">
-                        <i data-lucide="download"></i> Экспорт
-                      </button>
-                    </div>
+                  <div className="bg-slate-50/80 p-5 px-8 flex items-start gap-4 border-t border-slate-100">
+                    <i data-lucide="message-square" className="w-5 h-5 text-indigo-500 mt-1 shrink-0"></i>
+                    <p className="text-slate-600 italic font-medium leading-relaxed">
+                      "Приветствую. Представьтесь пожалуйста, расскажите о себе, как вас зовут и сколько вам лет?"
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="max-w-[1600px] mx-auto bg-white rounded-2xl shadow-sm border border-slate-200">
-                
-                {/* ВЕРХНИЙ СКРОЛЛ (появляется если таблица шире контейнера) */}
+              <div className="max-w-[1650px] mx-auto bg-white rounded-[32px] shadow-2xl shadow-slate-200/60 border border-slate-200/60 overflow-hidden">
                 <div 
                   ref={topScrollRef}
                   onScroll={handleTopScroll}
-                  className="overflow-x-auto custom-scrollbar border-b border-slate-100"
-                  style={{ height: '12px' }}
+                  className="overflow-x-auto custom-scrollbar border-b border-slate-100 bg-slate-50/50"
+                  style={{ height: '10px' }}
                 >
                   <div style={{ width: `${tableWidth}px`, height: '1px' }}></div>
                 </div>
@@ -216,58 +225,68 @@
                 >
                   <table ref={tableRef} className="w-full text-left border-collapse table-fixed">
                     <thead>
-                      <tr>
-                        <th className="bg-slate-100 p-4 border-b border-slate-200 font-semibold text-slate-600 w-16 text-center">№</th>
-                        <th className="bg-slate-100 p-4 border-b border-slate-200 font-semibold text-slate-600 w-[500px]">Вопросы и Ответы</th>
+                      <tr className="bg-slate-50/80 backdrop-blur-sm">
+                        <th className="p-6 border-b border-slate-200 font-bold text-slate-400 w-16 text-center uppercase text-xs tracking-widest"></th>
+                        <th className="p-6 border-b border-slate-200 font-bold text-slate-500 w-[550px] uppercase text-xs tracking-widest">Вопросы для кандидатов и ответы</th>
                         {candidates.map((candidate) => (
-                          <th key={candidate.id} className="bg-slate-50 border-b border-l border-slate-200 w-[280px] p-4">
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                              <input 
-                                type="text" value={candidate.name}
-                                onChange={(e) => updateCandidateField(candidate.id, 'name', e.target.value)}
-                                className="bg-white font-bold text-slate-900 border border-slate-200 p-1.5 w-full rounded outline-none text-sm"
+                          <th key={candidate.id} className="border-b border-l border-slate-200 w-[300px] p-0 group">
+                            <div className="p-6">
+                              <div className="flex items-center justify-between gap-2 mb-4">
+                                <input 
+                                  type="text" value={candidate.name}
+                                  onChange={(e) => updateCandidateField(candidate.id, 'name', e.target.value)}
+                                  className="bg-slate-100/50 font-extrabold text-slate-800 border-2 border-transparent p-2.5 w-full rounded-xl outline-none text-sm focus:border-indigo-400 focus:bg-white transition-all"
+                                />
+                                {candidates.length > 1 && (
+                                  <button onClick={() => removeCandidate(candidate.id)} className="text-slate-300 hover:text-rose-500 transition-all p-2 bg-slate-100 rounded-xl hover:bg-rose-50">
+                                    <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                  </button>
+                                )}
+                              </div>
+                              <textarea 
+                                placeholder="Информация о кандидате..." 
+                                rows="3" 
+                                value={candidate.info}
+                                onChange={(e) => updateCandidateField(candidate.id, 'info', e.target.value)}
+                                className="w-full p-3 text-xs bg-slate-50 border-2 border-slate-100 rounded-xl outline-none resize-none focus:border-indigo-200 focus:bg-white transition-all shadow-inner placeholder:text-slate-400"
                               />
-                              {candidates.length > 1 && (
-                                <button onClick={() => removeCandidate(candidate.id)} className="text-slate-400 hover:text-rose-500">
-                                  <i data-lucide="trash-2"></i>
-                                </button>
-                              )}
                             </div>
-                            <textarea 
-                              placeholder="Инфо..." rows="3" value={candidate.info}
-                              onChange={(e) => updateCandidateField(candidate.id, 'info', e.target.value)}
-                              className="w-full p-2 text-xs bg-white border border-slate-200 rounded outline-none resize-none"
-                            />
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                       {QUESTIONS_DATA.map((item, qIndex) => {
                         if (item.isIntro) return null;
                         return (
-                          <tr key={qIndex} className="hover:bg-slate-50/50">
-                            <td className="p-4 border-b border-slate-100 text-center text-slate-400 font-medium align-top">{qIndex}</td>
-                            <td className="p-4 border-b border-slate-100 align-top">
-                              <div className="text-slate-800 font-medium mb-2 leading-snug">{item.q}</div>
-                              <div className="text-[13px] bg-emerald-50 text-emerald-900 p-3 rounded-lg border border-emerald-100">
-                                <span className="font-bold text-emerald-700 block mb-1 uppercase text-[10px] tracking-wide">Верный ответ:</span>
-                                {item.a}
+                          <tr key={qIndex} className="group hover:bg-slate-50/40 transition-all">
+                            <td className="p-6 text-center text-slate-300 font-black text-lg italic align-top">{qIndex}</td>
+                            <td className="p-6 align-top">
+                              <div className="text-slate-800 font-bold mb-4 text-[15px] leading-snug group-hover:text-indigo-900 transition-colors">{item.q}</div>
+                              <div className="relative pl-5 py-3 pr-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/80">
+                                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 rounded-l-2xl"></div>
+                                <span className="font-bold text-emerald-600 block mb-1 uppercase text-[10px] tracking-wider">Эталонный ответ:</span>
+                                <p className="text-[13px] text-emerald-900 leading-relaxed font-medium">{item.a}</p>
                               </div>
                             </td>
                             {candidates.map(candidate => (
-                              <td key={`${candidate.id}-${qIndex}`} className="border-b border-l border-slate-100 p-4 align-top">
-                                <select
-                                  value={candidate.answers[qIndex] || ''}
-                                  onChange={(e) => updateAnswer(candidate.id, qIndex, e.target.value)}
-                                  className={`w-full p-2.5 border rounded-lg outline-none font-semibold text-sm cursor-pointer shadow-sm ${getSelectColor(candidate.answers[qIndex])}`}
-                                >
-                                  <option value="" disabled>— Выбор —</option>
-                                  <option value="да">Да (Верно)</option>
-                                  <option value="нет">Нет (Неверно)</option>
-                                  <option value="50/50">50 / 50</option>
-                                  <option value="бред">Бред / Ошибки</option>
-                                </select>
+                              <td key={`${candidate.id}-${qIndex}`} className="border-l border-slate-100 p-6 align-top">
+                                <div className="relative">
+                                  <select
+                                    value={candidate.answers[qIndex] || ''}
+                                    onChange={(e) => updateAnswer(candidate.id, qIndex, e.target.value)}
+                                    className={`w-full p-4 border-2 rounded-2xl outline-none font-bold text-sm cursor-pointer shadow-sm transition-all appearance-none ${getSelectColor(candidate.answers[qIndex])}`}
+                                  >
+                                    <option value="" disabled>Оценить ответ</option>
+                                    <option value="да">✓ Верно</option>
+                                    <option value="нет">✕ Неверно</option>
+                                    <option value="50/50">⚠ Частично</option>
+                                    <option value="бред">? Бред / Ошибка</option>
+                                  </select>
+                                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                                    <i data-lucide="chevron-down" className="w-4 h-4"></i>
+                                  </div>
+                                </div>
                               </td>
                             ))}
                           </tr>
