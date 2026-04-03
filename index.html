@@ -102,7 +102,8 @@
           { q: "Как работает система тикетов на торговой площадке и можно ли через нее получить роль Approved?", a: "Система тикетов позволяет решать спорные ситуации с модераторами. Получение роли Approved через тикеты невозможно." },
           { q: "Можно ли продать обвес на автомобиль? В каком канале?", a: "Да, продажа обвесов допустима в канале «Тюнинг»." },
           { q: "Можно ли в объявлении о наборе в семью добавлять ссылку на семейный Discord?", a: "Нет, так как канал семьи не является официальным ресурсом проекта." },
-          { q: "Можно ли в канале «Реклама» опубликовать видео своей стрельбы?", a: "Нет, ссылки на видеоролики и прочий материал, не связанный с официальными ресурсами, запрещены." }
+          { q: "Можно ли в канале «Реклама» опубликовать видео своей стрельбы?", a: "Нет, ссылки на видеоролики и прочий материал, не связанный с официальными ресурсами, запрещены." },
+          { q: "Итоговый вердикт по кандидату:", a: "Определите, подходит ли данный пользователь на должность модератора.", isFinal: true }
         ];
 
         function App() {
@@ -123,7 +124,6 @@
 
           useEffect(() => {
             localStorage.setItem('tp_candidates', JSON.stringify(candidates));
-            // Обновляем ширину верхнего скролла после изменения данных
             updateTopScrollWidth();
           }, [candidates]);
 
@@ -131,7 +131,6 @@
             if (window.lucide) window.lucide.createIcons();
           });
 
-          // Синхронизация скроллов
           const handleTopScroll = () => {
             if (tableScrollRef.current && topScrollRef.current) {
               tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
@@ -205,11 +204,19 @@
 
           const getSelectColor = (val) => {
             switch(val) {
-              case 'да': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-              case 'нет': return 'bg-rose-50 text-rose-700 border-rose-200';
-              case '50/50': return 'bg-amber-50 text-amber-700 border-amber-200';
-              case 'бред': return 'bg-slate-100 text-slate-600 border-slate-300';
-              default: return 'bg-white text-slate-400 border-slate-200';
+              case 'да': 
+              case 'подходит':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+              case 'нет': 
+              case 'не подходит':
+                return 'bg-rose-50 text-rose-700 border-rose-200';
+              case '50/50': 
+              case 'возможно подходит':
+                return 'bg-amber-50 text-amber-700 border-amber-200';
+              case 'бред': 
+                return 'bg-slate-100 text-slate-600 border-slate-300';
+              default: 
+                return 'bg-white text-slate-400 border-slate-200';
             }
           };
 
@@ -260,7 +267,6 @@
               </div>
 
               <div className="max-w-[1650px] mx-auto bg-white rounded-[32px] shadow-2xl shadow-slate-200/60 border border-slate-200/60 overflow-hidden">
-                {/* Верхний скроллбар */}
                 <div 
                   ref={topScrollRef}
                   onScroll={handleTopScroll}
@@ -310,15 +316,20 @@
                     <tbody className="divide-y divide-slate-100">
                       {QUESTIONS_DATA.map((item, qIndex) => {
                         if (item.isIntro) return null;
+                        const isFinalRow = item.isFinal;
                         return (
-                          <tr key={qIndex} className="group hover:bg-slate-50/40 transition-all">
-                            <td className="p-6 text-center text-slate-300 font-black text-lg italic align-top sticky-col border-r">{qIndex}</td>
+                          <tr key={qIndex} className={`group hover:bg-slate-50/40 transition-all ${isFinalRow ? 'bg-indigo-50/30' : ''}`}>
+                            <td className="p-6 text-center text-slate-300 font-black text-lg italic align-top sticky-col border-r">
+                                {isFinalRow ? <i data-lucide="award" className="text-indigo-400 w-6 h-6 mx-auto"></i> : qIndex}
+                            </td>
                             <td className="p-6 align-top sticky-col-2 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">
-                              <div className="text-slate-800 font-bold mb-4 text-[15px] leading-snug group-hover:text-indigo-900 transition-colors">{item.q}</div>
-                              <div className="relative pl-5 py-3 pr-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/80">
-                                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 rounded-l-2xl"></div>
-                                <span className="font-bold text-emerald-600 block mb-1 uppercase text-[10px] tracking-wider">Правильный ответ:</span>
-                                <p className="text-[13px] text-emerald-900 leading-relaxed font-medium">{item.a}</p>
+                              <div className={`font-bold mb-4 text-[15px] leading-snug group-hover:text-indigo-900 transition-colors ${isFinalRow ? 'text-indigo-700' : 'text-slate-800'}`}>{item.q}</div>
+                              <div className={`relative pl-5 py-3 pr-4 rounded-2xl border ${isFinalRow ? 'bg-white border-indigo-100 shadow-sm' : 'bg-emerald-50/50 border-emerald-100/80'}`}>
+                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl ${isFinalRow ? 'bg-indigo-400' : 'bg-emerald-400'}`}></div>
+                                <span className={`font-bold block mb-1 uppercase text-[10px] tracking-wider ${isFinalRow ? 'text-indigo-400' : 'text-emerald-600'}`}>
+                                    {isFinalRow ? 'Инструкция:' : 'Правильный ответ:'}
+                                </span>
+                                <p className={`text-[13px] leading-relaxed font-medium ${isFinalRow ? 'text-indigo-900' : 'text-emerald-900'}`}>{item.a}</p>
                               </div>
                             </td>
                             {candidates.map(candidate => (
@@ -330,10 +341,20 @@
                                     className={`w-full p-4 border-2 rounded-2xl outline-none font-bold text-sm cursor-pointer shadow-sm transition-all appearance-none ${getSelectColor(candidate.answers[qIndex])}`}
                                   >
                                     <option value="" disabled>Оценить ответ</option>
-                                    <option value="да">✓ Верно</option>
-                                    <option value="нет">✕ Неверно</option>
-                                    <option value="50/50">⚠ Частично</option>
-                                    <option value="бред">? Бред / Ошибка</option>
+                                    {!isFinalRow ? (
+                                        <React.Fragment>
+                                            <option value="да">✓ Верно</option>
+                                            <option value="нет">✕ Неверно</option>
+                                            <option value="50/50">⚠ Частично</option>
+                                            <option value="бред">? Бред / Ошибка</option>
+                                        </React.Fragment>
+                                    ) : (
+                                        <React.Fragment>
+                                            <option value="подходит">★ Подходит</option>
+                                            <option value="возможно подходит">● Возможно подходит</option>
+                                            <option value="не подходит">✕ Не подходит</option>
+                                        </React.Fragment>
+                                    )}
                                   </select>
                                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
                                     <i data-lucide="chevron-down" className="w-4 h-4"></i>
