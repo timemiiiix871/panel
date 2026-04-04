@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Обзвон на Торговую Площадку</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -13,13 +14,40 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f3f4f9; font-size: 19px; } /* Увеличено на ~3 пункта */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #f3f4f9; font-size: 19px; } /* Крупный шрифт */
+        
         .tab-active { border-bottom: 4px solid #4f46e5; color: #4f46e5; background: white; }
-        .sticky-col { position: sticky; left: 0; z-index: 20; background: white; border-right: 1px solid #e2e8f0; }
-        .sticky-col-2 { position: sticky; left: 80px; z-index: 20; background: white; box-shadow: 4px 0 6px -1px rgba(0,0,0,0.05); }
-        .custom-scrollbar::-webkit-scrollbar { height: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* Исправление прозрачности: жесткий белый фон для фиксированных колонок */
+        .sticky-col { 
+            position: sticky; 
+            left: 0; 
+            z-index: 30; 
+            background-color: #ffffff !important; 
+            border-right: 1px solid #e2e8f0; 
+        }
+        .sticky-col-2 { 
+            position: sticky; 
+            left: 80px; 
+            z-index: 30; 
+            background-color: #ffffff !important; 
+            box-shadow: 5px 0 10px -5px rgba(0,0,0,0.1); 
+        }
+        
+        /* Для шапки таблицы фиксированные колонки должны быть чуть выше по z-index */
+        thead th.sticky-col { z-index: 40; background-color: #f8fafc !important; }
+        thead th.sticky-col-2 { z-index: 40; background-color: #f8fafc !important; }
+
+        tr:hover .sticky-col, tr:hover .sticky-col-2 {
+            background-color: #f8fafc !important;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
         input, select, textarea { font-size: 18px !important; }
     </style>
 </head>
@@ -27,7 +55,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         const firebaseConfig = {
           apiKey: "AIzaSyAJKSAClBMKAVhEyiLu4PyRNkV6tye2FbU",
@@ -59,18 +87,56 @@
           const [activeId, setActiveId] = useState('');
           const [loading, setLoading] = useState(true);
 
+          const tableScrollRef = useRef(null);
+          const topScrollRef = useRef(null);
+          const tableRef = useRef(null);
+          const topScrollInnerRef = useRef(null);
+
+          // 1. Подписка на Firebase
           useEffect(() => {
             const ref = db.ref('recruitment_sessions');
             ref.on('value', (snapshot) => {
               const data = snapshot.val() || {};
               setSessions(data);
-              if (!activeId && Object.keys(data).length > 0) setActiveId(Object.keys(data)[0]);
+              
+              if (Object.keys(data).length === 0) {
+                const firstId = 'session_' + Date.now();
+                db.ref('recruitment_sessions/' + firstId).set({
+                  id: firstId,
+                  recruiter: "Recruiter 1",
+                  candidates: [{ id: Date.now(), name: "Кандидат 1", info: "", answers: {} }]
+                });
+                setActiveId(firstId);
+              } else if (!activeId) {
+                setActiveId(Object.keys(data)[0]);
+              }
+              
               setLoading(false);
               setTimeout(() => { if(window.lucide) window.lucide.createIcons(); }, 100);
             });
             return () => ref.off();
           }, [activeId]);
 
+          // 2. Двойной скролл (Синхронизация)
+          const handleTopScroll = () => {
+            if (tableScrollRef.current && topScrollRef.current) {
+              tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+            }
+          };
+
+          const handleTableScroll = () => {
+            if (tableScrollRef.current && topScrollRef.current) {
+              topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+            }
+          };
+
+          useEffect(() => {
+            if (tableRef.current && topScrollInnerRef.current) {
+              topScrollInnerRef.current.style.width = `${tableRef.current.offsetWidth}px`;
+            }
+          }, [sessions, activeId]);
+
+          // 3. Функции управления данными
           const addSession = () => {
             const name = prompt('Введите имя рекрутера:');
             if (!name) return;
@@ -95,9 +161,16 @@
 
           const addCandidate = () => {
             if (!activeId) return;
-            const newC = { id: Date.now(), name: "Кандидат " + ((sessions[activeId].candidates?.length || 0) + 1), info: "", answers: {} };
             const currentCandidates = sessions[activeId].candidates || [];
+            const newC = { id: Date.now(), name: "Кандидат " + (currentCandidates.length + 1), info: "", answers: {} };
             db.ref(`recruitment_sessions/${activeId}/candidates`).set([...currentCandidates, newC]);
+          };
+
+          const removeCandidate = (cIdx) => {
+            if (!confirm('Вы действительно хотите удалить этого кандидата?')) return;
+            const currentCandidates = [...(sessions[activeId].candidates || [])];
+            currentCandidates.splice(cIdx, 1);
+            db.ref(`recruitment_sessions/${activeId}/candidates`).set(currentCandidates);
           };
 
           const updateCandidate = (cIdx, field, val) => {
@@ -134,46 +207,51 @@
             document.body.removeChild(link);
           };
 
-          if (loading) return <div className="flex h-screen items-center justify-center font-bold">Загрузка данных...</div>;
+          if (loading) return <div className="flex h-screen items-center justify-center font-bold text-2xl text-slate-600">Подключение к Cloud DB...</div>;
 
           const current = sessions[activeId];
 
           return (
-            <div className="p-4 md:p-8 max-w-[1800px] mx-auto">
+            <div className="p-4 md:p-8 max-w-[1800px] mx-auto pb-20">
+              
               {/* Header */}
               <div className="mb-6 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-8 bg-indigo-700 text-white">
                   <h1 className="text-3xl font-black mb-4 flex items-center gap-3">
                     <i data-lucide="shopping-cart"></i> Обзвон на Торговую Площадку
                   </h1>
-                  <div className="bg-white/10 p-4 rounded-xl border border-white/20 text-indigo-50 italic">
+                  <div className="bg-white/10 p-5 rounded-xl border border-white/20 text-indigo-50 italic text-xl font-medium">
                     "Приветствую. Вы попали на обзвон на пост модератора торговой площадки. Представьтесь пожалуйста, расскажите о себе, как вас зовут и сколько вам лет."
                   </div>
+                  
                   <div className="mt-6 flex justify-between items-end">
+                    {/* Вкладки сессий */}
                     <div className="flex gap-2 overflow-x-auto">
                         {Object.values(sessions).map(s => (
-                            <div key={s.id} className="relative group">
+                            <div key={s.id} className="relative flex items-center">
                                 <button 
                                     onClick={() => setActiveId(s.id)} 
-                                    className={`px-6 py-3 rounded-t-lg font-bold text-lg transition-all ${activeId === s.id ? 'bg-white text-indigo-700' : 'bg-indigo-800 text-indigo-300 hover:bg-indigo-600'}`}
+                                    className={`px-6 py-3 rounded-t-lg font-bold text-lg transition-all flex items-center gap-2 ${activeId === s.id ? 'bg-white text-indigo-700' : 'bg-indigo-800 text-indigo-300 hover:bg-indigo-600'}`}
                                 >
                                     {s.recruiter}
                                 </button>
                                 {activeId === s.id && (
-                                    <div className="absolute -top-2 -right-2 flex gap-1">
-                                        <button onClick={() => renameSession(s.id)} className="p-1 bg-amber-500 rounded-full shadow-md hover:bg-amber-600"><i data-lucide="edit-3" className="w-3 h-3"></i></button>
-                                        <button onClick={() => deleteSession(s.id)} className="p-1 bg-rose-500 rounded-full shadow-md hover:bg-rose-600"><i data-lucide="trash-2" className="w-3 h-3"></i></button>
+                                    <div className="absolute -top-3 right-0 flex gap-1 bg-white p-1 rounded-full shadow-lg border border-slate-100 scale-75 origin-bottom-right">
+                                        <button onClick={() => renameSession(s.id)} className="p-1.5 bg-amber-500 text-white rounded-full hover:bg-amber-600"><i data-lucide="edit-3" className="w-4 h-4"></i></button>
+                                        <button onClick={() => deleteSession(s.id)} className="p-1.5 bg-rose-500 text-white rounded-full hover:bg-rose-600"><i data-lucide="trash-2" className="w-4 h-4"></i></button>
                                     </div>
                                 )}
                             </div>
                         ))}
-                        <button onClick={addSession} className="px-4 py-3 text-white hover:text-emerald-400 transition-colors"><i data-lucide="plus-circle"></i></button>
+                        <button onClick={addSession} className="px-4 py-3 text-white hover:text-emerald-400 transition-colors"><i data-lucide="plus-circle" className="w-6 h-6"></i></button>
                     </div>
+                    
+                    {/* Кнопки управления */}
                     <div className="flex gap-3 pb-2">
-                        <button onClick={addCandidate} className="bg-emerald-500 hover:bg-emerald-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all">
+                        <button onClick={addCandidate} className="bg-emerald-500 hover:bg-emerald-600 px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 transition-all text-lg shadow-lg">
                             <i data-lucide="user-plus"></i> + Кандидат
                         </button>
-                        <button onClick={exportCSV} className="bg-white text-slate-800 hover:bg-slate-100 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg">
+                        <button onClick={exportCSV} className="bg-white text-slate-800 hover:bg-slate-100 px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg text-lg border">
                             <i data-lucide="file-text"></i> Отчет
                         </button>
                     </div>
@@ -182,23 +260,41 @@
               </div>
 
               {current ? (
-                <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                  <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full border-collapse">
+                <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden relative">
+                  
+                  {/* Верхний дополнительный скролл */}
+                  <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto custom-scrollbar bg-slate-100 border-b">
+                    <div ref={topScrollInnerRef} style={{ height: '10px' }}></div>
+                  </div>
+
+                  <div ref={tableScrollRef} onScroll={handleTableScroll} className="overflow-x-auto custom-scrollbar">
+                    <table ref={tableRef} className="w-full border-collapse table-fixed">
                       <thead>
                         <tr className="bg-slate-50 border-b">
-                          <th className="p-6 w-20 sticky-col text-slate-400 font-black">#</th>
+                          <th className="p-6 w-20 sticky-col text-slate-400 font-black text-center">#</th>
                           <th className="p-6 w-[500px] sticky-col-2 bg-slate-50 text-slate-500 text-left font-black">ВОПРОС / ТЕКСТ</th>
+                          
                           {current.candidates?.map((c, idx) => (
-                            <th key={c.id} className="p-6 w-[350px] border-l min-w-[320px]">
-                              <input 
-                                className="font-black text-indigo-700 w-full outline-none bg-transparent text-xl border-b-2 border-transparent focus:border-indigo-300" 
-                                value={c.name} 
-                                onChange={(e) => updateCandidate(idx, 'name', e.target.value)} 
-                              />
+                            <th key={c.id} className="p-6 w-[350px] border-l min-w-[320px] group relative bg-white">
+                              <div className="flex items-center justify-between gap-2">
+                                <input 
+                                  className="font-black text-indigo-700 w-full outline-none bg-transparent text-xl border-b-2 border-transparent focus:border-indigo-300" 
+                                  value={c.name} 
+                                  onChange={(e) => updateCandidate(idx, 'name', e.target.value)} 
+                                />
+                                {/* Кнопка удаления кандидата (появляется при наведении) */}
+                                <button 
+                                  onClick={() => removeCandidate(idx)}
+                                  className="opacity-0 group-hover:opacity-100 p-1.5 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-all"
+                                  title="Удалить кандидата"
+                                >
+                                  <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                </button>
+                              </div>
+                              
                               <textarea 
-                                className="w-full mt-3 p-3 text-base bg-slate-100 rounded-xl outline-none resize-none border border-slate-200 focus:bg-white transition-all" 
-                                placeholder="Инфо о кандидате..." 
+                                className="w-full mt-3 p-3 text-base bg-slate-50 rounded-xl outline-none resize-none border border-slate-200 focus:bg-white transition-all focus:border-indigo-200" 
+                                placeholder="Инфо о кандидате (опыт, фракция)..." 
                                 rows="3"
                                 value={c.info || ''} 
                                 onChange={(e) => updateCandidate(idx, 'info', e.target.value)} 
@@ -210,33 +306,49 @@
                       <tbody>
                         {QUESTIONS.map((q, qIdx) => (
                           <tr key={qIdx} className={`border-b hover:bg-slate-50/50 transition-colors ${q.isFinal ? 'bg-indigo-50/30' : ''}`}>
-                            <td className="p-6 text-center text-slate-300 font-black sticky-col text-xl">{q.isFinal ? '★' : qIdx + 1}</td>
-                            <td className="p-6 sticky-col-2 bg-white">
-                                <div className="font-bold text-slate-800 leading-tight mb-2 text-lg">{q.q}</div>
-                                {q.a && <div className="text-sm text-emerald-600 font-bold uppercase tracking-wider">Подсказка: {q.a}</div>}
+                            
+                            {/* Номер вопроса */}
+                            <td className="p-6 text-center text-slate-300 font-black sticky-col text-2xl align-middle">
+                              {q.isFinal ? <i data-lucide="award" className="w-7 h-7 text-indigo-500 mx-auto"></i> : qIdx + 1}
                             </td>
+                            
+                            {/* Текст вопроса и правильный ответ */}
+                            <td className="p-6 sticky-col-2 bg-white">
+                                <div className="font-bold text-slate-800 leading-snug mb-2 text-lg">{q.q}</div>
+                                {q.a && (
+                                  <div className="text-sm bg-emerald-50 text-emerald-700 p-2.5 rounded-lg border border-emerald-100 font-semibold">
+                                    <span className="text-emerald-500 uppercase text-xs font-black block mb-0.5">Правильный ответ:</span>
+                                    {q.a}
+                                  </div>
+                                )}
+                            </td>
+                            
+                            {/* Выпадающие списки кандидатов */}
                             {current.candidates?.map((c, cIdx) => (
-                              <td key={c.id} className="p-6 border-l">
+                              <td key={c.id} className="p-6 border-l align-middle">
                                 <select 
-                                  className={`w-full p-4 border-2 rounded-2xl font-black outline-none cursor-pointer transition-all ${
-                                    c.answers?.[qIdx] === 'да' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
-                                    c.answers?.[qIdx] === 'нет' ? 'bg-rose-50 border-rose-200 text-rose-700' : 
-                                    'bg-white border-slate-100 text-slate-400'
+                                  className={`w-full p-4 border-2 rounded-2xl font-black outline-none cursor-pointer transition-all text-base ${
+                                    c.answers?.[qIdx] === 'да' || c.answers?.[qIdx] === 'подходит' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
+                                    c.answers?.[qIdx] === 'нет' || c.answers?.[qIdx] === 'не подходит' ? 'bg-rose-50 border-rose-200 text-rose-700' : 
+                                    c.answers?.[qIdx] === '50/50' || c.answers?.[qIdx] === 'возможно подходит' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                                    'bg-white border-slate-200 text-slate-400 focus:border-indigo-300'
                                   }`}
                                   value={c.answers?.[qIdx] || ''}
                                   onChange={(e) => updateAnswer(cIdx, qIdx, e.target.value)}
                                 >
-                                  <option value="">Оценить</option>
+                                  {/* Убрано слово "Оценить", теперь просто "-" */}
+                                  <option value="">-</option>
                                   {q.isFinal ? (
                                     <>
-                                      <option value="да">ПОДХОДИТ</option>
-                                      <option value="нет">НЕ ПОДХОДИТ</option>
+                                      <option value="подходит">★ ПОДХОДИТ</option>
+                                      <option value="возможно подходит">● ВОЗМОЖНО</option>
+                                      <option value="не подходит">✕ НЕ ПОДХОДИТ</option>
                                     </>
                                   ) : (
                                     <>
-                                      <option value="да">ВЕРНО</option>
-                                      <option value="нет">НЕВЕРНО</option>
-                                      <option value="50/50">50 / 50</option>
+                                      <option value="да">✓ ВЕРНО</option>
+                                      <option value="нет">✕ НЕВЕРНО</option>
+                                      <option value="50/50">⚠ 50 / 50</option>
                                     </>
                                   )}
                                 </select>
@@ -249,17 +361,17 @@
                   </div>
                   
                   {/* Footer Text */}
-                  <div className="p-10 bg-slate-900 text-white">
+                  <div className="p-10 bg-slate-900 text-white border-t border-slate-800">
                     <div className="max-w-2xl mx-auto text-center">
-                        <div className="text-emerald-400 font-bold mb-4 flex justify-center"><i data-lucide="check-circle" className="w-10 h-10"></i></div>
-                        <p className="text-xl leading-relaxed italic opacity-90">
+                        <div className="text-emerald-400 font-bold mb-3 flex justify-center"><i data-lucide="check-circle" className="w-12 h-12"></i></div>
+                        <p className="text-xl leading-relaxed italic opacity-90 font-medium">
                             "Вы успешно завершили обзвон. Результаты будут оглашены после обзвона других кандидатов в новостях торговой площадки. Желаем удачи!"
                         </p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center p-20 bg-white rounded-2xl border-2 border-dashed border-slate-300 text-slate-400 font-bold">
+                <div className="text-center p-20 bg-white rounded-2xl border-2 border-dashed border-slate-300 text-slate-400 font-bold text-xl">
                     Выберите рекрутера или создайте нового, чтобы начать работу
                 </div>
               )}
