@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Обзвон на ТП | Панель</title>
+    <title>Обзвон на ТП | Командная Панель</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -13,56 +13,14 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .lucide { width: 1.2em; height: 1.2em; vertical-align: middle; }
-        
-        .custom-scrollbar::-webkit-scrollbar {
-            height: 8px;
-            width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f8fafc;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        .header-gradient {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        }
-
-        /* Стили для фиксации столбцов */
-        .sticky-col {
-            position: sticky;
-            left: 0;
-            z-index: 20;
-            background: white;
-        }
-        
-        thead th.sticky-col {
-            z-index: 40;
-            background: #f8fafc;
-        }
-
-        .sticky-col-2 {
-            position: sticky;
-            left: 64px; /* ширина первого столбца */
-            z-index: 20;
-            background: white;
-        }
-
-        thead th.sticky-col-2 {
-            z-index: 40;
-            background: #f8fafc;
-        }
-
-        tr:hover .sticky-col,
-        tr:hover .sticky-col-2 {
-            background: #f8fafc; /* соответствие hover-эффекту строки */
-        }
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .header-gradient { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+        .sticky-col { position: sticky; left: 0; z-index: 20; background: white; }
+        .sticky-col-2 { position: sticky; left: 64px; z-index: 20; background: white; }
+        tr:hover .sticky-col, tr:hover .sticky-col-2 { background: #f8fafc; }
+        .tab-active { border-bottom: 4px solid #4f46e5; color: #4f46e5; background: white; }
     </style>
 </head>
 <body class="bg-[#f3f4f9]">
@@ -107,208 +65,181 @@
         ];
 
         function App() {
-          const [seniorNick, setSeniorNick] = useState(() => localStorage.getItem('tp_senior_nick') || '');
-          const [candidates, setCandidates] = useState(() => {
-            const saved = localStorage.getItem('tp_candidates');
-            return saved ? JSON.parse(saved) : [{ id: 1, name: 'Кандидат 1', info: '', answers: {} }];
+          // Состояние для всех сессий (рекрутеров)
+          const [sessions, setSessions] = useState(() => {
+            const saved = localStorage.getItem('tp_sessions');
+            return saved ? JSON.parse(saved) : [{ id: 'default', recruiter: 'Recruiter 1', candidates: [{ id: 1, name: 'Кандидат 1', info: '', answers: {} }] }];
           });
+          
+          const [activeSessionId, setActiveSessionId] = useState(() => localStorage.getItem('tp_active_session') || 'default');
+          const [seniorNick, setSeniorNick] = useState(() => localStorage.getItem('tp_senior_nick') || '');
 
           const tableScrollRef = useRef(null);
           const topScrollRef = useRef(null);
-          const tableRef = useRef(null);
-          const topScrollInnerRef = useRef(null);
 
+          // Сохранение в LocalStorage
           useEffect(() => {
+            localStorage.setItem('tp_sessions', JSON.stringify(sessions));
+            localStorage.setItem('tp_active_session', activeSessionId);
             localStorage.setItem('tp_senior_nick', seniorNick);
-          }, [seniorNick]);
-
-          useEffect(() => {
-            localStorage.setItem('tp_candidates', JSON.stringify(candidates));
-            updateTopScrollWidth();
-          }, [candidates]);
-
-          useEffect(() => {
             if (window.lucide) window.lucide.createIcons();
-          });
+          }, [sessions, activeSessionId, seniorNick]);
 
-          const handleTopScroll = () => {
-            if (tableScrollRef.current && topScrollRef.current) {
-              tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+          const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
+
+          // Управление сессиями (вкладками)
+          const addSession = () => {
+            const name = prompt('Введите имя рекрутера:');
+            if (!name) return;
+            const newId = Date.now().toString();
+            setSessions([...sessions, { id: newId, recruiter: name, candidates: [{ id: 1, name: 'Кандидат 1', info: '', answers: {} }] }]);
+            setActiveSessionId(newId);
+          };
+
+          const removeSession = (id, e) => {
+            e.stopPropagation();
+            if (sessions.length === 1) return;
+            if (confirm('Удалить всю сессию этого рекрутера?')) {
+              const filtered = sessions.filter(s => s.id !== id);
+              setSessions(filtered);
+              setActiveSessionId(filtered[0].id);
             }
           };
 
-          const handleTableScroll = () => {
-            if (tableScrollRef.current && topScrollRef.current) {
-              topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
-            }
-          };
-
-          const updateTopScrollWidth = () => {
-            if (tableRef.current && topScrollInnerRef.current) {
-              topScrollInnerRef.current.style.width = `${tableRef.current.offsetWidth}px`;
-            }
-          };
-
-          useEffect(() => {
-            window.addEventListener('resize', updateTopScrollWidth);
-            updateTopScrollWidth();
-            return () => window.removeEventListener('resize', updateTopScrollWidth);
-          }, []);
-
+          // Управление кандидатами внутри сессии
           const addCandidate = () => {
-            const newId = candidates.length > 0 ? Math.max(...candidates.map(c => c.id)) + 1 : 1;
-            setCandidates([...candidates, { id: newId, name: `Кандидат ${newId}`, info: '', answers: {} }]);
+            setSessions(sessions.map(s => {
+              if (s.id === activeSessionId) {
+                const newId = s.candidates.length > 0 ? Math.max(...s.candidates.map(c => c.id)) + 1 : 1;
+                return { ...s, candidates: [...s.candidates, { id: newId, name: `Кандидат ${newId}`, info: '', answers: {} }] };
+              }
+              return s;
+            }));
           };
 
-          const removeCandidate = (id) => {
-            if (confirm('Вы уверены, что хотите удалить кандидата и все его данные?')) {
-              setCandidates(candidates.filter(c => c.id !== id));
-            }
-          };
-
-          const resetData = () => {
-            if (confirm('Очистить все данные текущего обзвона?')) {
-              setSeniorNick('');
-              setCandidates([{ id: 1, name: 'Кандидат 1', info: '', answers: {} }]);
-              localStorage.removeItem('tp_senior_nick');
-              localStorage.removeItem('tp_candidates');
-            }
-          };
-
-          const updateCandidateField = (id, field, value) => {
-            setCandidates(candidates.map(c => c.id === id ? { ...c, [field]: value } : c));
+          const updateCandidateField = (candidateId, field, value) => {
+            setSessions(sessions.map(s => {
+              if (s.id === activeSessionId) {
+                return { ...s, candidates: s.candidates.map(c => c.id === candidateId ? { ...c, [field]: value } : c) };
+              }
+              return s;
+            }));
           };
 
           const updateAnswer = (candidateId, questionIndex, value) => {
-            setCandidates(candidates.map(c => {
-              if (c.id === candidateId) return { ...c, answers: { ...c.answers, [questionIndex]: value } };
-              return c;
+            setSessions(sessions.map(s => {
+              if (s.id === activeSessionId) {
+                return { ...s, candidates: s.candidates.map(c => 
+                  c.id === candidateId ? { ...c, answers: { ...c.answers, [questionIndex]: value } } : c
+                )};
+              }
+              return s;
             }));
           };
 
           const exportToCSV = () => {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-            if (seniorNick) csvContent += `Сеньор:;${seniorNick}\n\n`;
-            const headers = ['ID', 'Вопрос', ...candidates.map(c => c.name)];
+            csvContent += `Сеньор:;${seniorNick};Рекрутер:;${activeSession.recruiter}\n\n`;
+            
+            // Заголовки: ID, Вопрос, Имена кандидатов
+            const headers = ['ID', 'Вопрос / Ответ', ...activeSession.candidates.map(c => c.name)];
             csvContent += headers.join(';') + '\n';
+
+            // НОВАЯ СТРОКА: Информация о кандидатах
+            const infoRow = ['', 'ИНФОРМАЦИЯ О КАНДИДАТЕ', ...activeSession.candidates.map(c => `"${(c.info || '').replace(/"/g, '""')}"`)];
+            csvContent += infoRow.join(';') + '\n\n';
+
+            // Данные по вопросам
             QUESTIONS_DATA.forEach((item, idx) => {
               if (item.isIntro) return;
-              const row = [idx, `"${item.q.replace(/"/g, '""')}"`, ...candidates.map(c => `"${c.answers[idx] || ''}"`)];
+              const row = [idx, `"${item.q.replace(/"/g, '""')}"`, ...activeSession.candidates.map(c => `"${c.answers[idx] || ''}"`)];
               csvContent += row.join(';') + '\n';
             });
+
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `обзвон_ТП_${seniorNick || 'результаты'}.csv`);
+            link.setAttribute("download", `Отчет_${activeSession.recruiter}_${new Date().toLocaleDateString()}.csv`);
             link.click();
           };
 
           const getSelectColor = (val) => {
             switch(val) {
-              case 'да': 
-              case 'подходит':
-                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-              case 'нет': 
-              case 'не подходит':
-                return 'bg-rose-50 text-rose-700 border-rose-200';
-              case '50/50': 
-              case 'возможно подходит':
-                return 'bg-amber-50 text-amber-700 border-amber-200';
-              case 'бред': 
-                return 'bg-slate-100 text-slate-600 border-slate-300';
-              default: 
-                return 'bg-white text-slate-400 border-slate-200';
+              case 'да': case 'подходит': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+              case 'нет': case 'не подходит': return 'bg-rose-50 text-rose-700 border-rose-200';
+              case '50/50': case 'возможно подходит': return 'bg-amber-50 text-amber-700 border-amber-200';
+              default: return 'bg-white text-slate-400 border-slate-200';
             }
           };
 
           return (
-            <div className="min-h-screen p-4 md:p-10 text-slate-900">
-              <div className="max-w-[1650px] mx-auto mb-8">
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 overflow-hidden border border-white">
-                  <div className="header-gradient p-8 text-white">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                      <div className="flex items-center gap-5">
-                        <div className="bg-white/20 p-4 rounded-2xl backdrop-blur-md">
-                          <i data-lucide="shield-check" className="w-10 h-10"></i>
-                        </div>
-                        <div>
-                          <h1 className="text-3xl font-extrabold tracking-tight">Обзвон на Торговую Площадку</h1>
-                        </div>
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                        <div className="relative w-full sm:w-72">
-                          <i data-lucide="user" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 w-4 h-4"></i>
-                          <input 
-                            type="text" placeholder="Никнейм сеньора..." value={seniorNick}
-                            onChange={(e) => setSeniorNick(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-2xl outline-none focus:bg-white/20 placeholder:text-white/50 text-white font-medium transition-all"
-                          />
-                        </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          <button onClick={addCandidate} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white text-indigo-600 px-6 py-3.5 rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
-                            <i data-lucide="user-plus" className="w-5 h-5"></i> Добавить
-                          </button>
-                          <button onClick={exportToCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-500/30 text-white border border-white/30 px-6 py-3.5 rounded-2xl font-bold transition-all hover:bg-indigo-500/50 backdrop-blur-sm">
-                            <i data-lucide="file-down" className="w-5 h-5"></i> Отчет
-                          </button>
-                          <button onClick={resetData} title="Полная очистка" className="sm:flex-none flex items-center justify-center bg-rose-500/30 text-white border border-white/30 p-3.5 rounded-2xl transition-all hover:bg-rose-500/50 backdrop-blur-sm">
-                            <i data-lucide="refresh-ccw" className="w-5 h-5"></i>
-                          </button>
-                        </div>
-                      </div>
+            <div className="min-h-screen p-4 md:p-8 text-slate-900">
+              {/* Header */}
+              <div className="max-w-[1800px] mx-auto mb-6">
+                <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+                  <div className="header-gradient p-6 text-white flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-4">
+                       <i data-lucide="layout-dashboard" className="w-8 h-8 opacity-80"></i>
+                       <h1 className="text-2xl font-bold">Shift Lead Panel</h1>
+                       <input 
+                         type="text" placeholder="Ник Сеньора..." 
+                         value={seniorNick} onChange={(e) => setSeniorNick(e.target.value)}
+                         className="ml-4 bg-white/10 border border-white/20 rounded-xl px-4 py-2 outline-none focus:bg-white/20"
+                       />
+                    </div>
+                    <div className="flex gap-3">
+                       <button onClick={addCandidate} className="bg-white text-indigo-600 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform">
+                         <i data-lucide="user-plus" className="w-4 h-4"></i> + Кандидат
+                       </button>
+                       <button onClick={exportToCSV} className="bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-600 transition-colors">
+                         <i data-lucide="download" className="w-4 h-4"></i> CSV Отчет
+                       </button>
                     </div>
                   </div>
-                  <div className="bg-slate-50/80 p-5 px-8 flex items-start gap-4 border-t border-slate-100">
-                    <i data-lucide="message-square" className="w-5 h-5 text-indigo-500 mt-1 shrink-0"></i>
-                    <p className="text-slate-600 italic font-medium leading-relaxed">
-                      "Приветствую. Представьтесь, пожалуйста, расскажите о себе: как вас зовут и сколько вам лет?"
-                    </p>
+
+                  {/* Tabs System */}
+                  <div className="bg-slate-100 flex items-center px-4 overflow-x-auto custom-scrollbar border-b">
+                    {sessions.map(s => (
+                      <div 
+                        key={s.id} 
+                        onClick={() => setActiveSessionId(s.id)}
+                        className={`px-6 py-4 cursor-pointer font-bold text-sm transition-all flex items-center gap-3 whitespace-nowrap ${activeSessionId === s.id ? 'tab-active' : 'text-slate-500 hover:bg-slate-200'}`}
+                      >
+                        <i data-lucide="user" className="w-4 h-4"></i>
+                        {s.recruiter}
+                        <button onClick={(e) => removeSession(s.id, e)} className="ml-2 hover:text-rose-500 opacity-50 hover:opacity-100">
+                          <i data-lucide="x" className="w-3 h-3"></i>
+                        </button>
+                      </div>
+                    ))}
+                    <button onClick={addSession} className="ml-4 p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Добавить рекрутера">
+                      <i data-lucide="plus-circle" className="w-6 h-6"></i>
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <div className="max-w-[1650px] mx-auto bg-white rounded-[32px] shadow-2xl shadow-slate-200/60 border border-slate-200/60 overflow-hidden">
-                <div 
-                  ref={topScrollRef}
-                  onScroll={handleTopScroll}
-                  className="overflow-x-auto custom-scrollbar bg-slate-50 border-b border-slate-100"
-                  style={{ height: '12px' }}
-                >
-                  <div ref={topScrollInnerRef} style={{ height: '1px' }}></div>
-                </div>
-
-                <div 
-                  ref={tableScrollRef}
-                  onScroll={handleTableScroll}
-                  className="overflow-x-auto custom-scrollbar"
-                >
-                  <table ref={tableRef} className="w-full text-left border-collapse table-fixed">
+              {/* Main Table */}
+              <div className="max-w-[1800px] mx-auto bg-white rounded-[24px] shadow-xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto custom-scrollbar" ref={tableScrollRef}>
+                  <table className="w-full text-left border-collapse table-fixed">
                     <thead>
-                      <tr className="bg-slate-50/80 backdrop-blur-sm">
-                        <th className="p-6 border-b border-slate-200 font-bold text-slate-400 w-16 text-center uppercase text-xs tracking-widest sticky-col border-r"></th>
-                        <th className="p-6 border-b border-slate-200 font-bold text-slate-500 w-[550px] uppercase text-xs tracking-widest sticky-col-2 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">Вопросы для кандидатов и ответы</th>
-                        {candidates.map((candidate) => (
-                          <th key={candidate.id} className="border-b border-l border-slate-200 w-[300px] p-0 group">
-                            <div className="p-6">
-                              <div className="flex items-center justify-between gap-2 mb-4">
-                                <input 
-                                  type="text" value={candidate.name}
-                                  onChange={(e) => updateCandidateField(candidate.id, 'name', e.target.value)}
-                                  className="bg-slate-100/50 font-extrabold text-slate-800 border-2 border-transparent p-2.5 w-full rounded-xl outline-none text-sm focus:border-indigo-400 focus:bg-white transition-all"
-                                />
-                                {candidates.length > 1 && (
-                                  <button onClick={() => removeCandidate(candidate.id)} className="text-slate-300 hover:text-rose-500 transition-all p-2 bg-slate-100 rounded-xl hover:bg-rose-50">
-                                    <i data-lucide="trash-2" className="w-4 h-4"></i>
-                                  </button>
-                                )}
-                              </div>
-                              <textarea 
-                                placeholder="Информация о кандидате..." 
-                                rows="3" 
-                                value={candidate.info}
-                                onChange={(e) => updateCandidateField(candidate.id, 'info', e.target.value)}
-                                className="w-full p-3 text-xs bg-slate-50 border-2 border-slate-100 rounded-xl outline-none resize-none focus:border-indigo-200 focus:bg-white transition-all shadow-inner placeholder:text-slate-400"
-                              />
-                            </div>
+                      <tr className="bg-slate-50">
+                        <th className="p-4 w-16 sticky-col border-r text-center text-slate-400 text-xs uppercase font-black">#</th>
+                        <th className="p-4 w-[500px] sticky-col-2 shadow-md bg-slate-50 text-slate-500 text-xs uppercase font-black">Вопросы и Ответы</th>
+                        {activeSession.candidates.map((candidate) => (
+                          <th key={candidate.id} className="border-l border-slate-200 w-[320px] p-4 bg-white">
+                            <input 
+                              type="text" value={candidate.name}
+                              onChange={(e) => updateCandidateField(candidate.id, 'name', e.target.value)}
+                              className="font-black text-slate-800 border-none p-0 w-full outline-none text-lg focus:text-indigo-600 mb-2"
+                            />
+                            <textarea 
+                              placeholder="Заметки о кандидате (опыт, в какой фракции и т.д.)..." 
+                              rows="3" 
+                              value={candidate.info}
+                              onChange={(e) => updateCandidateField(candidate.id, 'info', e.target.value)}
+                              className="w-full p-3 text-xs bg-slate-50 border border-slate-100 rounded-xl outline-none resize-none focus:bg-white focus:border-indigo-200"
+                            />
                           </th>
                         ))}
                       </tr>
@@ -316,50 +247,38 @@
                     <tbody className="divide-y divide-slate-100">
                       {QUESTIONS_DATA.map((item, qIndex) => {
                         if (item.isIntro) return null;
-                        const isFinalRow = item.isFinal;
+                        const isFinal = item.isFinal;
                         return (
-                          <tr key={qIndex} className={`group hover:bg-slate-50/40 transition-all ${isFinalRow ? 'bg-indigo-50/30' : ''}`}>
-                            <td className="p-6 text-center text-slate-300 font-black text-lg italic align-top sticky-col border-r">
-                                {isFinalRow ? <i data-lucide="award" className="text-indigo-400 w-6 h-6 mx-auto"></i> : qIndex}
-                            </td>
-                            <td className="p-6 align-top sticky-col-2 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">
-                              <div className={`font-bold mb-4 text-[15px] leading-snug group-hover:text-indigo-900 transition-colors ${isFinalRow ? 'text-indigo-700' : 'text-slate-800'}`}>{item.q}</div>
-                              <div className={`relative pl-5 py-3 pr-4 rounded-2xl border ${isFinalRow ? 'bg-white border-indigo-100 shadow-sm' : 'bg-emerald-50/50 border-emerald-100/80'}`}>
-                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl ${isFinalRow ? 'bg-indigo-400' : 'bg-emerald-400'}`}></div>
-                                <span className={`font-bold block mb-1 uppercase text-[10px] tracking-wider ${isFinalRow ? 'text-indigo-400' : 'text-emerald-600'}`}>
-                                    {isFinalRow ? 'Инструкция:' : 'Правильный ответ:'}
-                                </span>
-                                <p className={`text-[13px] leading-relaxed font-medium ${isFinalRow ? 'text-indigo-900' : 'text-emerald-900'}`}>{item.a}</p>
+                          <tr key={qIndex} className={`group hover:bg-slate-50/50 ${isFinal ? 'bg-indigo-50/20' : ''}`}>
+                            <td className="p-4 text-center text-slate-300 font-bold sticky-col border-r">{isFinal ? '★' : qIndex}</td>
+                            <td className="p-5 sticky-col-2 shadow-md bg-white group-hover:bg-slate-50">
+                              <div className="font-bold text-slate-800 mb-2 text-sm">{item.q}</div>
+                              <div className="text-xs text-emerald-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100 font-medium">
+                                <strong>ОТВЕТ:</strong> {item.a}
                               </div>
                             </td>
-                            {candidates.map(candidate => (
-                              <td key={`${candidate.id}-${qIndex}`} className="border-l border-slate-100 p-6 align-top">
-                                <div className="relative">
-                                  <select
-                                    value={candidate.answers[qIndex] || ''}
-                                    onChange={(e) => updateAnswer(candidate.id, qIndex, e.target.value)}
-                                    className={`w-full p-4 border-2 rounded-2xl outline-none font-bold text-sm cursor-pointer shadow-sm transition-all appearance-none ${getSelectColor(candidate.answers[qIndex])}`}
-                                  >
-                                    <option value="" disabled>Оценить ответ</option>
-                                    {!isFinalRow ? (
-                                        <React.Fragment>
-                                            <option value="да">✓ Верно</option>
-                                            <option value="нет">✕ Неверно</option>
-                                            <option value="50/50">⚠ Частично</option>
-                                            <option value="бред">? Бред / Ошибка</option>
-                                        </React.Fragment>
-                                    ) : (
-                                        <React.Fragment>
-                                            <option value="подходит">★ Подходит</option>
-                                            <option value="возможно подходит">● Возможно подходит</option>
-                                            <option value="не подходит">✕ Не подходит</option>
-                                        </React.Fragment>
-                                    )}
-                                  </select>
-                                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
-                                    <i data-lucide="chevron-down" className="w-4 h-4"></i>
-                                  </div>
-                                </div>
+                            {activeSession.candidates.map(candidate => (
+                              <td key={`${candidate.id}-${qIndex}`} className="p-4 border-l border-slate-100">
+                                <select
+                                  value={candidate.answers[qIndex] || ''}
+                                  onChange={(e) => updateAnswer(candidate.id, qIndex, e.target.value)}
+                                  className={`w-full p-4 border-2 rounded-2xl font-bold text-sm outline-none transition-all cursor-pointer ${getSelectColor(candidate.answers[qIndex])}`}
+                                >
+                                  <option value="">Оценить...</option>
+                                  {!isFinal ? (
+                                    <>
+                                      <option value="да">✓ Верно</option>
+                                      <option value="нет">✕ Неверно</option>
+                                      <option value="50/50">⚠ Частично</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="подходит">★ Подходит</option>
+                                      <option value="возможно подходит">● Возможно подходит</option>
+                                      <option value="не подходит">✕ Не подходит</option>
+                                    </>
+                                  )}
+                                </select>
                               </td>
                             ))}
                           </tr>
@@ -368,11 +287,6 @@
                     </tbody>
                   </table>
                 </div>
-              </div>
-              <div className="max-w-[1650px] mx-auto mt-6 flex justify-end">
-                <span className="text-xs text-slate-400 flex items-center gap-2">
-                   <i data-lucide="save" className="w-3 h-3"></i> Все данные автоматически сохраняются в вашем браузере
-                </span>
               </div>
             </div>
           );
