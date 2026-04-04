@@ -2,7 +2,6 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloud Sync | Обзвон ТП</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -14,11 +13,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f3f4f9; }
         .tab-active { border-bottom: 4px solid #4f46e5; color: #4f46e5; background: white; }
-        .sticky-col { position: sticky; left: 0; z-index: 20; background: white; }
-        .sticky-col-2 { position: sticky; left: 64px; z-index: 20; background: white; }
+        .sticky-col { position: sticky; left: 0; z-index: 20; background: white; border-right: 1px solid #e2e8f0; }
+        .sticky-col-2 { position: sticky; left: 64px; z-index: 20; background: white; box-shadow: 4px 0 6px -1px rgba(0,0,0,0.05); }
         .custom-scrollbar::-webkit-scrollbar { height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
@@ -29,30 +28,29 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- КОНФИГУРАЦИЯ FIREBASE (ВСТАВЬТЕ СВОИ ДАННЫЕ ТУТ) ---
         const firebaseConfig = {
           apiKey: "AIzaSyAJKSAClBMKAVhEyiLu4PyRNkV6tye2FbU",
           authDomain: "market-c4087.firebaseapp.com",
-          databaseURL: "https://market-c4087-default-rtdb.europe-west1.firebasedatabase.app/",
           projectId: "market-c4087",
           storageBucket: "market-c4087.firebasestorage.app",
           messagingSenderId: "388070354779",
-          appId: "1:388070354779:web:4c52cca0c3705cfdb7347e"
+          appId: "1:388070354779:web:47ccda63f50bd1bcb7347e",
+          databaseURL: "https://market-c4087-default-rtdb.europe-west1.firebasedatabase.app"
         };
 
-        // Инициализация
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const QUESTIONS_DATA = [
-          { q: "Представьтесь, пожалуйста (ФИО, возраст)", isIntro: true },
+        const QUESTIONS = [
+          { q: "Представьтесь, пожалуйста (Ник, возраст)", isIntro: true },
           { q: "Разрешено ли публиковать объявление с покупкой/продажей «Пустого номера»?", a: "Нет, запрещено (п.11 правил)." },
-          { q: "Какое макс. кол-во машин в одном объявлении?", a: "Не более 5 авто." },
-          { q: "Можно ли рекламировать услуги дизайна?", a: "Нет, только функциональный бизнес." },
-          { q: "Итоговый вердикт:", a: "Подходит ли человек?", isFinal: true }
-          // ... добавьте остальные вопросы по аналогии с прошлым кодом
+          { q: "В каком канале публикуется объявление об обмене автомобиля на рюкзак?", a: "Допустимого канала нет." },
+          { q: "Сколько слов Caps Lock можно написать?", a: "Максимум 3 слова." },
+          { q: "Допустима ли купля/продажа номеров с запретными словами?", a: "Нет, они модерируются." },
+          { q: "Разрешено ли объявление не на языке сервера?", a: "Нет, только на русском." },
+          { q: "Макс. кол-во машин в одном объявлении?", a: "Не более 5 авто." },
+          { q: "Разрешено ли продавать ключи от авто?", a: "Нет, запрещено." },
+          { q: "Итоговый вердикт по кандидату:", a: "Определите, подходит ли он.", isFinal: true }
         ];
 
         function App() {
@@ -60,133 +58,121 @@
           const [activeId, setActiveId] = useState('');
           const [loading, setLoading] = useState(true);
 
-          // 1. Подписка на данные из облака
           useEffect(() => {
-            const sessionsRef = db.ref('sessions');
-            sessionsRef.on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                setSessions(data);
-                // Если активная сессия не выбрана, выбираем первую доступную
-                if (!activeId && Object.keys(data).length > 0) {
-                    setActiveId(Object.keys(data)[0]);
-                }
-                setLoading(false);
-                if (window.lucide) window.lucide.createIcons();
+            const ref = db.ref('recruitment_sessions');
+            ref.on('value', (snapshot) => {
+              const data = snapshot.val() || {};
+              setSessions(data);
+              
+              // Если база пустая — создаем первую запись
+              if (Object.keys(data).length === 0) {
+                const firstId = 'session_' + Date.now();
+                db.ref('recruitment_sessions/' + firstId).set({
+                  id: firstId,
+                  recruiter: "Recruiter 1",
+                  candidates: [{ id: Date.now(), name: "Кандидат 1", info: "", answers: {} }]
+                });
+                setActiveId(firstId);
+              } else if (!activeId) {
+                setActiveId(Object.keys(data)[0]);
+              }
+              
+              setLoading(false);
+              setTimeout(() => { if(window.lucide) window.lucide.createIcons(); }, 100);
             });
-            return () => sessionsRef.off();
+            return () => ref.off();
           }, [activeId]);
-
-          // Функции обновления данных в Cloud DB
-          const updateDB = (newData) => db.ref('sessions').set(newData);
 
           const addSession = () => {
             const name = prompt('Имя рекрутера:');
             if (!name) return;
-            const newId = 'session_' + Date.now();
-            const updated = { 
-                ...sessions, 
-                [newId]: { 
-                    id: newId, 
-                    recruiter: name, 
-                    candidates: [{ id: Date.now(), name: 'Кандидат 1', info: '', answers: {} }] 
-                } 
-            };
-            updateDB(updated);
-            setActiveId(newId);
+            const id = 'session_' + Date.now();
+            db.ref('recruitment_sessions/' + id).set({
+              id, recruiter: name, candidates: [{ id: Date.now(), name: "Кандидат 1", info: "", answers: {} }]
+            });
+            setActiveId(id);
           };
 
-          const addCandidate = (sId) => {
-            const session = sessions[sId];
-            const newCandidate = { id: Date.now(), name: 'Новый Кандидат', info: '', answers: {} };
-            const updatedCandidates = [...(session.candidates || []), newCandidate];
-            db.ref(`sessions/${sId}/candidates`).set(updatedCandidates);
+          const addCandidate = () => {
+            if (!activeId) return;
+            const newC = { id: Date.now(), name: "Новый Кандидат", info: "", answers: {} };
+            const currentCandidates = sessions[activeId].candidates || [];
+            db.ref(`recruitment_sessions/${activeId}/candidates`).set([...currentCandidates, newC]);
           };
 
-          const updateCandidateData = (sId, cIdx, field, value) => {
-            db.ref(`sessions/${sId}/candidates/${cIdx}/${field}`).set(value);
+          const updateCandidate = (cIdx, field, val) => {
+            db.ref(`recruitment_sessions/${activeId}/candidates/${cIdx}/${field}`).set(val);
           };
 
-          const updateAnswer = (sId, cIdx, qIdx, value) => {
-            db.ref(`sessions/${sId}/candidates/${cIdx}/answers/${qIdx}`).set(value);
+          const updateAnswer = (cIdx, qIdx, val) => {
+            db.ref(`recruitment_sessions/${activeId}/candidates/${cIdx}/answers/${qIdx}`).set(val);
           };
 
-          if (loading) return <div className="flex h-screen items-center justify-center font-bold">Загрузка данных из облака...</div>;
+          if (loading) return <div className="flex h-screen items-center justify-center font-bold">Подключение к облаку...</div>;
 
-          const currentSession = sessions[activeId];
+          const current = sessions[activeId];
 
           return (
             <div className="p-4 md:p-8">
-              <div className="max-w-[1800px] mx-auto mb-6 bg-white rounded-3xl shadow-lg overflow-hidden">
-                <div className="bg-indigo-600 p-6 text-white flex justify-between items-center">
-                  <h1 className="text-xl font-bold flex items-center gap-2">
-                    <i data-lucide="cloud-lightning"></i> Real-time Recruitment Panel
-                  </h1>
-                  <button onClick={() => addCandidate(activeId)} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-bold transition-all">
-                    + Добавить кандидата
-                  </button>
+              <div className="max-w-[1600px] mx-auto mb-6 bg-white rounded-2xl shadow-sm border border-slate-200">
+                <div className="p-6 bg-indigo-600 text-white rounded-t-2xl flex justify-between items-center">
+                  <h1 className="text-xl font-bold flex items-center gap-2"><i data-lucide="users"></i> Обзвон ТП (Live)</h1>
+                  <button onClick={addCandidate} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg font-bold transition-all">+ Добавить кандидата</button>
                 </div>
-
-                {/* Вкладки рекрутеров */}
-                <div className="bg-slate-50 flex items-center px-4 overflow-x-auto border-b">
+                <div className="flex px-4 bg-slate-50 border-b overflow-x-auto custom-scrollbar">
                   {Object.values(sessions).map(s => (
-                    <button 
-                      key={s.id} 
-                      onClick={() => setActiveId(s.id)}
-                      className={`px-6 py-4 font-bold text-sm transition-all whitespace-nowrap ${activeId === s.id ? 'tab-active' : 'text-slate-400'}`}
-                    >
+                    <button key={s.id} onClick={() => setActiveId(s.id)} className={`px-6 py-4 font-bold text-sm transition-all whitespace-nowrap ${activeId === s.id ? 'tab-active' : 'text-slate-400'}`}>
                       {s.recruiter}
                     </button>
                   ))}
-                  <button onClick={addSession} className="ml-4 text-indigo-600 p-2 hover:bg-indigo-50 rounded-full">
-                    <i data-lucide="plus-circle"></i>
-                  </button>
+                  <button onClick={addSession} className="ml-4 text-indigo-600 px-3"><i data-lucide="plus-circle"></i></button>
                 </div>
               </div>
 
-              {currentSession && (
-                <div className="max-w-[1800px] mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
+              {current && (
+                <div className="max-w-[1600px] mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full border-collapse">
                       <thead>
-                        <tr className="bg-slate-50">
-                          <th className="p-4 w-16 sticky-col border-r text-slate-400 text-xs">#</th>
+                        <tr className="bg-slate-50 border-b">
+                          <th className="p-4 w-16 sticky-col text-slate-400 text-xs">#</th>
                           <th className="p-4 w-[400px] sticky-col-2 bg-slate-50 text-slate-500 text-xs text-left">ВОПРОС</th>
-                          {currentSession.candidates?.map((c, cIdx) => (
+                          {current.candidates?.map((c, idx) => (
                             <th key={c.id} className="p-4 w-[300px] border-l min-w-[250px]">
-                              <input 
-                                className="font-bold text-slate-800 w-full outline-none focus:text-indigo-600"
-                                value={c.name}
-                                onChange={(e) => updateCandidateData(activeId, cIdx, 'name', e.target.value)}
-                              />
-                              <textarea 
-                                className="w-full mt-2 p-2 text-xs bg-slate-100 rounded-lg outline-none resize-none"
-                                placeholder="Инфо..."
-                                value={c.info || ''}
-                                onChange={(e) => updateCandidateData(activeId, cIdx, 'info', e.target.value)}
-                              />
+                              <input className="font-bold text-slate-800 w-full outline-none bg-transparent" value={c.name} onChange={(e) => updateCandidate(idx, 'name', e.target.value)} />
+                              <textarea className="w-full mt-2 p-2 text-xs bg-slate-100 rounded-lg outline-none resize-none" placeholder="Информация о кандидате (опыт, CSV данные)..." value={c.info || ''} onChange={(e) => updateCandidate(idx, 'info', e.target.value)} />
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {QUESTIONS_DATA.map((q, qIdx) => !q.isIntro && (
-                          <tr key={qIdx} className="border-t hover:bg-slate-50/50">
-                            <td className="p-4 text-center text-slate-300 sticky-col border-r">{qIdx}</td>
-                            <td className="p-4 sticky-col-2 bg-white shadow-sm">
-                                <div className="text-sm font-semibold">{q.q}</div>
-                                {q.a && <div className="text-[10px] text-emerald-600 mt-1 uppercase font-bold">Ответ: {q.a}</div>}
+                        {QUESTIONS.map((q, qIdx) => !q.isIntro && (
+                          <tr key={qIdx} className="border-b hover:bg-slate-50/30 transition-colors">
+                            <td className="p-4 text-center text-slate-300 font-bold sticky-col">{qIdx}</td>
+                            <td className="p-4 sticky-col-2 bg-white text-sm">
+                                <div className="font-semibold text-slate-700">{q.q}</div>
+                                {q.a && <div className="text-[10px] text-emerald-600 mt-1 font-bold">ОТВЕТ: {q.a}</div>}
                             </td>
-                            {currentSession.candidates?.map((c, cIdx) => (
+                            {current.candidates?.map((c, cIdx) => (
                               <td key={c.id} className="p-4 border-l">
                                 <select 
-                                  className="w-full p-2 border rounded-xl text-sm font-medium outline-none bg-white cursor-pointer"
+                                  className={`w-full p-2 border rounded-lg text-sm font-bold outline-none cursor-pointer ${c.answers?.[qIdx] === 'да' ? 'bg-emerald-50 text-emerald-600' : c.answers?.[qIdx] === 'нет' ? 'bg-rose-50 text-rose-600' : 'bg-white text-slate-500'}`}
                                   value={c.answers?.[qIdx] || ''}
-                                  onChange={(e) => updateAnswer(activeId, cIdx, qIdx, e.target.value)}
+                                  onChange={(e) => updateAnswer(cIdx, qIdx, e.target.value)}
                                 >
                                   <option value="">-</option>
-                                  <option value="да">Верно</option>
-                                  <option value="нет">Неверно</option>
-                                  <option value="50/50">50/50</option>
+                                  {q.isFinal ? (
+                                    <>
+                                      <option value="да">Подходит</option>
+                                      <option value="нет">Не подходит</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="да">Верно</option>
+                                      <option value="нет">Неверно</option>
+                                      <option value="50/50">50/50</option>
+                                    </>
+                                  )}
                                 </select>
                               </td>
                             ))}
@@ -205,4 +191,4 @@
         root.render(<App />);
     </script>
 </body>
-</html>А
+</html>
