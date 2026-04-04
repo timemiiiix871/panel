@@ -115,7 +115,7 @@
           const topScrollInnerRef = useRef(null);
 
           useEffect(() => {
-            const ref = db.ref('recruitment_sessions');
+            const ref = db.ref('recruitment_sessions/MajesticMarket');
             ref.on('value', (snapshot) => {
               const data = snapshot.val() || {};
               setSessions(data);
