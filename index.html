@@ -60,9 +60,8 @@
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
+        const INTRO_QUESTION = { q: "Представьтесь, пожалуйста, расскажите о себе: как вас зовут и сколько вам лет?", isIntro: true };
         const QUESTIONS = [
-          { q: "Представьтесь, пожалуйста, расскажите о себе: как вас зовут и сколько вам лет?", isIntro: true },
           { q: "Разрешено ли публиковать объявление с покупкой/продажей «Пустого номера»?", a: "Нет, продажа пустого номера запрещена и наказывается 11-м пунктом правил." },
           { q: "В каком канале публикуется объявление об обмене автомобиля на тактический рюкзак?", a: "Допустимого канала для такого рода объявлений нет." },
           { q: "Сколько слов Caps Lock можно написать в одном объявлении?", a: "Максимум 3 слова можно написать Caps Lock." },
@@ -237,19 +236,19 @@
                         {QUESTIONS.map((q, qIdx) => (
                           <tr key={qIdx} className={`border-b hover:bg-slate-50/30 ${q.isFinal ? 'bg-indigo-50/50' : ''}`}>
                             <td className="p-6 text-center text-slate-300 font-black sticky-col">
-                                {q.isFinal ? <i data-lucide="award" className="w-6 h-6 text-indigo-500 mx-auto"></i> : qIdx + 1}
+                                {q.isFinal ? <i data-lucide="award" className="w-6 h-6 text-indigo-500 mx-auto"></i> : (qIdx + 1)}
                             </td>
                             <td className="p-6 sticky-col-2 bg-white">
-                                <div className="font-bold text-slate-800 mb-2">{q.q}</div>
+                                <div className="font-bold text-slate-800 mb-2 leading-relaxed">{q.q}</div>
                                 {q.a && <div className="text-xs bg-emerald-50 text-emerald-700 p-2 rounded border border-emerald-100 font-bold uppercase">{q.a}</div>}
                             </td>
                             {current.candidates?.map((c, cIdx) => (
-                              <td key={cIdx} className="p-6 border-l align-top">
+                              <td key={cIdx} className="p-6 border-l align-top bg-white">
                                 <select 
-                                  className={`w-full p-3 border-2 rounded-xl font-black outline-none mb-3 cursor-pointer ${
+                                  className={`w-full p-4 border-2 rounded-2xl font-black outline-none cursor-pointer transition-all ${
                                     c.answers?.[qIdx]?.includes('да') || c.answers?.[qIdx] === 'подходит' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
                                     c.answers?.[qIdx]?.includes('нет') || c.answers?.[qIdx] === 'не подходит' ? 'bg-rose-50 border-rose-200 text-rose-700' : 
-                                    c.answers?.[qIdx] === '50/50' || c.answers?.[qIdx] === 'возможно подходит' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                                    c.answers?.[qIdx] === '50/50' ? 'bg-amber-50 border-amber-200 text-amber-700' :
                                     'bg-white border-slate-200 text-slate-400'
                                   }`}
                                   value={c.answers?.[qIdx] || ''}
@@ -270,16 +269,6 @@
                                     </>
                                   )}
                                 </select>
-                                
-                                {qIdx === 0 && (
-                                  <textarea 
-                                    className="w-full p-3 text-sm bg-slate-50 rounded-xl border border-slate-200 focus:bg-white outline-none transition-all"
-                                    placeholder="О себе: Имя, возраст, опыт..."
-                                    rows="5"
-                                    value={c.info || ''}
-                                    onChange={(e) => updateCandidate(cIdx, 'info', e.target.value)}
-                                  />
-                                )}
                               </td>
                             ))}
                           </tr>
