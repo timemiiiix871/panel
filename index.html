@@ -15,11 +15,11 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f3f4f9; font-size: 19px; } /* Крупный шрифт */
+        body { font-family: 'Inter', sans-serif; background: #f3f4f9; font-size: 19px; } 
         
         .tab-active { border-bottom: 4px solid #4f46e5; color: #4f46e5; background: white; }
         
-        /* Исправление прозрачности: жесткий белый фон для фиксированных колонок */
+        /* Фиксированные колонки с жестким белым фоном */
         .sticky-col { 
             position: sticky; 
             left: 0; 
@@ -35,7 +35,6 @@
             box-shadow: 5px 0 10px -5px rgba(0,0,0,0.1); 
         }
         
-        /* Для шапки таблицы фиксированные колонки должны быть чуть выше по z-index */
         thead th.sticky-col { z-index: 40; background-color: #f8fafc !important; }
         thead th.sticky-col-2 { z-index: 40; background-color: #f8fafc !important; }
 
@@ -92,7 +91,6 @@
           const tableRef = useRef(null);
           const topScrollInnerRef = useRef(null);
 
-          // 1. Подписка на Firebase
           useEffect(() => {
             const ref = db.ref('recruitment_sessions');
             ref.on('value', (snapshot) => {
@@ -117,7 +115,6 @@
             return () => ref.off();
           }, [activeId]);
 
-          // 2. Двойной скролл (Синхронизация)
           const handleTopScroll = () => {
             if (tableScrollRef.current && topScrollRef.current) {
               tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
@@ -136,7 +133,6 @@
             }
           }, [sessions, activeId]);
 
-          // 3. Функции управления данными
           const addSession = () => {
             const name = prompt('Введите имя рекрутера:');
             if (!name) return;
@@ -221,29 +217,38 @@
                     <i data-lucide="shopping-cart"></i> Обзвон на Торговую Площадку
                   </h1>
                   <div className="bg-white/10 p-5 rounded-xl border border-white/20 text-indigo-50 italic text-xl font-medium">
-                    "Приветствую. Вы попали на обзвон на пост модератора торговой площадки. Представьтесь пожалуйста, расскажите о себе, как вас зовут и сколько вам лет."
+                    "Приветствую. <br />
+                      Вы попали на обзвон на пост модератора торговой площадки. <br /> 
+                      Представьтесь пожалуйста, расскажите о себе, как вас зовут и сколько вам лет."
                   </div>
                   
                   <div className="mt-6 flex justify-between items-end">
-                    {/* Вкладки сессий */}
-                    <div className="flex gap-2 overflow-x-auto">
+                    
+                    {/* КНОПКИ РЕКРУТЕРОВ (ИСПРАВЛЕНЫ) */}
+                    <div className="flex gap-4 overflow-x-auto items-end">
                         {Object.values(sessions).map(s => (
-                            <div key={s.id} className="relative flex items-center">
+                            <div key={s.id} className="flex flex-col items-center">
+                                {/* Иконки управления НАД вкладкой активного рекрутера */}
+                                {activeId === s.id && (
+                                    <div className="flex gap-2 mb-1 bg-white/20 p-1.5 rounded-lg border border-white/10">
+                                        <button onClick={() => renameSession(s.id)} className="p-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors" title="Переименовать"><i data-lucide="edit-3" className="w-4 h-4"></i></button>
+                                        <button onClick={() => deleteSession(s.id)} className="p-1 bg-rose-500 text-white rounded-md hover:bg-rose-600 transition-colors" title="Удалить"><i data-lucide="trash-2" className="w-4 h-4"></i></button>
+                                    </div>
+                                )}
+                                {/* Заглушка высоты для неактивных вкладок, чтобы кнопки не прыгали */}
+                                {activeId !== s.id && <div className="h-[38px]"></div>}
+                                
                                 <button 
                                     onClick={() => setActiveId(s.id)} 
                                     className={`px-6 py-3 rounded-t-lg font-bold text-lg transition-all flex items-center gap-2 ${activeId === s.id ? 'bg-white text-indigo-700' : 'bg-indigo-800 text-indigo-300 hover:bg-indigo-600'}`}
                                 >
                                     {s.recruiter}
                                 </button>
-                                {activeId === s.id && (
-                                    <div className="absolute -top-3 right-0 flex gap-1 bg-white p-1 rounded-full shadow-lg border border-slate-100 scale-75 origin-bottom-right">
-                                        <button onClick={() => renameSession(s.id)} className="p-1.5 bg-amber-500 text-white rounded-full hover:bg-amber-600"><i data-lucide="edit-3" className="w-4 h-4"></i></button>
-                                        <button onClick={() => deleteSession(s.id)} className="p-1.5 bg-rose-500 text-white rounded-full hover:bg-rose-600"><i data-lucide="trash-2" className="w-4 h-4"></i></button>
-                                    </div>
-                                )}
                             </div>
                         ))}
-                        <button onClick={addSession} className="px-4 py-3 text-white hover:text-emerald-400 transition-colors"><i data-lucide="plus-circle" className="w-6 h-6"></i></button>
+                        <div className="pb-2">
+                            <button onClick={addSession} className="px-4 py-2 text-white hover:text-emerald-400 transition-colors" title="Добавить рекрутера"><i data-lucide="plus-circle" className="w-7 h-7"></i></button>
+                        </div>
                     </div>
                     
                     {/* Кнопки управления */}
@@ -282,7 +287,6 @@
                                   value={c.name} 
                                   onChange={(e) => updateCandidate(idx, 'name', e.target.value)} 
                                 />
-                                {/* Кнопка удаления кандидата (появляется при наведении) */}
                                 <button 
                                   onClick={() => removeCandidate(idx)}
                                   className="opacity-0 group-hover:opacity-100 p-1.5 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-all"
@@ -307,12 +311,10 @@
                         {QUESTIONS.map((q, qIdx) => (
                           <tr key={qIdx} className={`border-b hover:bg-slate-50/50 transition-colors ${q.isFinal ? 'bg-indigo-50/30' : ''}`}>
                             
-                            {/* Номер вопроса */}
                             <td className="p-6 text-center text-slate-300 font-black sticky-col text-2xl align-middle">
                               {q.isFinal ? <i data-lucide="award" className="w-7 h-7 text-indigo-500 mx-auto"></i> : qIdx + 1}
                             </td>
                             
-                            {/* Текст вопроса и правильный ответ */}
                             <td className="p-6 sticky-col-2 bg-white">
                                 <div className="font-bold text-slate-800 leading-snug mb-2 text-lg">{q.q}</div>
                                 {q.a && (
@@ -323,7 +325,6 @@
                                 )}
                             </td>
                             
-                            {/* Выпадающие списки кандидатов */}
                             {current.candidates?.map((c, cIdx) => (
                               <td key={c.id} className="p-6 border-l align-middle">
                                 <select 
@@ -336,8 +337,8 @@
                                   value={c.answers?.[qIdx] || ''}
                                   onChange={(e) => updateAnswer(cIdx, qIdx, e.target.value)}
                                 >
-                                  {/* Убрано слово "Оценить", теперь просто "-" */}
-                                  <option value="">-</option>
+                                  {/* Прочерк заблокирован (disabled), его нельзя выбрать снова после изменения */}
+                                  <option value="" disabled>-</option>
                                   {q.isFinal ? (
                                     <>
                                       <option value="подходит">★ ПОДХОДИТ</option>
