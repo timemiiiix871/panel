@@ -181,7 +181,7 @@
           const addCandidate = () => {
             if (!activeId) return;
             const currentCandidates = sessions[activeId].candidates || [];
-            const newC = { id: Date.now(), name: "Кандидат " + (currentCandidates.length + 1), info: "", answers: {} };
+            const newC = { id: Date.now(), name: "Логин кандидата " + (currentCandidates.length + 1), info: "", answers: {} };
             db.ref(`recruitment_sessions/${activeId}/candidates`).set([...currentCandidates, newC]);
           };
 
@@ -300,7 +300,7 @@
                       <thead>
                         <tr className="bg-slate-50 border-b">
                           <th className="p-6 w-20 sticky-col text-slate-400 font-black text-center">#</th>
-                          <th className="p-6 w-[500px] sticky-col-2 bg-slate-50 text-slate-500 text-left font-black">ВОПРОС / ТЕКСТ</th>
+                          <th className="p-6 w-[500px] sticky-col-2 bg-slate-50 text-slate-500 text-left font-black">ВОПРОС / ОТВЕТ</th>
                           
                           {current.candidates?.map((c, idx) => (
                             <th key={c.id} className="p-6 w-[350px] border-l min-w-[320px] group relative bg-white">
