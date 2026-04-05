@@ -60,8 +60,10 @@
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const INTRO_QUESTION = { q: "Представьтесь, пожалуйста, расскажите о себе: как вас зовут и сколько вам лет?", isIntro: true };
+
+        // Основной массив вопросов (Интро добавлено в начало)
         const QUESTIONS = [
+          { q: "Представьтесь, пожалуйста, расскажите о себе: как вас зовут и сколько вам лет?", isIntro: true },
           { q: "Разрешено ли публиковать объявление с покупкой/продажей «Пустого номера»?", a: "Нет, продажа пустого номера запрещена и наказывается 11-м пунктом правил." },
           { q: "В каком канале публикуется объявление об обмене автомобиля на тактический рюкзак?", a: "Допустимого канала для такого рода объявлений нет." },
           { q: "Сколько слов Caps Lock можно написать в одном объявлении?", a: "Максимум 3 слова можно написать Caps Lock." },
@@ -119,7 +121,6 @@
             return () => ref.off();
           }, [activeId]);
 
-          // Синхронизация скролла
           useEffect(() => {
             if (tableRef.current && topScrollInnerRef.current) {
               topScrollInnerRef.current.style.width = `${tableRef.current.offsetWidth}px`;
@@ -138,7 +139,7 @@
             db.ref('recruitment_sessions/' + seniorLogin).set({
               id: seniorLogin,
               recruiter: name,
-              candidates: [{ id: Date.now(), name: "Логин кандидата 1", info: "", answers: {} }]
+              candidates: [{ id: Date.now(), name: "Логин кандидата 1", answers: {} }]
             });
             setActiveId(seniorLogin);
           };
@@ -151,7 +152,7 @@
 
           const addCandidate = () => {
             const currentC = sessions[activeId].candidates || [];
-            const newC = { id: Date.now(), name: "Логин кандидата " + (currentC.length + 1), info: "", answers: {} };
+            const newC = { id: Date.now(), name: "Логин кандидата " + (currentC.length + 1), answers: {} };
             db.ref(`recruitment_sessions/${activeId}/candidates`).set([...currentC, newC]);
           };
 
@@ -170,7 +171,12 @@
             let csv = "data:text/csv;charset=utf-8,\uFEFFВопрос;";
             csv += s.candidates.map(c => c.name).join(";") + "\n";
             QUESTIONS.forEach((q, qIdx) => {
-                csv += `${q.q};` + s.candidates.map(c => c.answers?.[qIdx] || "-").join(";") + "\n";
+                // Очищаем текст от точек с запятой, чтобы не ломать CSV структуру
+                const rowAnswers = s.candidates.map(c => {
+                    const ans = c.answers?.[qIdx] || "-";
+                    return ans.replace(/;/g, ',');
+                });
+                csv += `${q.q.replace(/;/g, ',')};` + rowAnswers.join(";") + "\n";
             });
             const link = document.createElement("a");
             link.href = encodeURI(csv);
@@ -236,39 +242,48 @@
                         {QUESTIONS.map((q, qIdx) => (
                           <tr key={qIdx} className={`border-b hover:bg-slate-50/30 ${q.isFinal ? 'bg-indigo-50/50' : ''}`}>
                             <td className="p-6 text-center text-slate-300 font-black sticky-col">
-                                {q.isFinal ? <i data-lucide="award" className="w-6 h-6 text-indigo-500 mx-auto"></i> : (qIdx + 1)}
+                                {q.isIntro ? <i data-lucide="user" className="w-6 h-6 text-blue-400 mx-auto"></i> : q.isFinal ? <i data-lucide="award" className="w-6 h-6 text-indigo-500 mx-auto"></i> : (qIdx)}
                             </td>
                             <td className="p-6 sticky-col-2 bg-white">
-                                <div className="font-bold text-slate-800 mb-2 leading-relaxed">{q.q}</div>
+                                <div className={`font-bold text-slate-800 mb-2 leading-relaxed ${q.isIntro ? 'text-blue-600' : ''}`}>{q.q}</div>
                                 {q.a && <div className="text-xs bg-emerald-50 text-emerald-700 p-2 rounded border border-emerald-100 font-bold uppercase">{q.a}</div>}
                             </td>
                             {current.candidates?.map((c, cIdx) => (
                               <td key={cIdx} className="p-6 border-l align-top bg-white">
-                                <select 
-                                  className={`w-full p-4 border-2 rounded-2xl font-black outline-none cursor-pointer transition-all ${
-                                    c.answers?.[qIdx]?.includes('да') || c.answers?.[qIdx] === 'подходит' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
-                                    c.answers?.[qIdx]?.includes('нет') || c.answers?.[qIdx] === 'не подходит' ? 'bg-rose-50 border-rose-200 text-rose-700' : 
-                                    c.answers?.[qIdx] === '50/50' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                                    'bg-white border-slate-200 text-slate-400'
-                                  }`}
-                                  value={c.answers?.[qIdx] || ''}
-                                  onChange={(e) => updateAnswer(cIdx, qIdx, e.target.value)}
-                                >
-                                  <option value="" disabled>-</option>
-                                  {q.isFinal ? (
-                                    <>
-                                        <option value="подходит">ПОДХОДИТ</option>
-                                        <option value="возможно подходит">ВОЗМОЖНО</option>
-                                        <option value="не подходит">НЕ ПОДХОДИТ</option>
-                                    </>
-                                  ) : (
-                                    <>
-                                        <option value="да">ВЕРНО</option>
-                                        <option value="нет">НЕВЕРНО</option>
-                                        <option value="50/50">50 / 50</option>
-                                    </>
-                                  )}
-                                </select>
+                                {q.isIntro ? (
+                                  <textarea 
+                                    className="w-full p-4 border-2 rounded-2xl outline-none focus:border-indigo-300 transition-all min-h-[100px] resize-none text-slate-700"
+                                    placeholder="Введите данные о кандидате..."
+                                    value={c.answers?.[qIdx] || ''}
+                                    onChange={(e) => updateAnswer(cIdx, qIdx, e.target.value)}
+                                  />
+                                ) : (
+                                  <select 
+                                    className={`w-full p-4 border-2 rounded-2xl font-black outline-none cursor-pointer transition-all ${
+                                      c.answers?.[qIdx]?.includes('да') || c.answers?.[qIdx] === 'подходит' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
+                                      c.answers?.[qIdx]?.includes('нет') || c.answers?.[qIdx] === 'не подходит' ? 'bg-rose-50 border-rose-200 text-rose-700' : 
+                                      c.answers?.[qIdx] === '50/50' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                                      'bg-white border-slate-200 text-slate-400'
+                                    }`}
+                                    value={c.answers?.[qIdx] || ''}
+                                    onChange={(e) => updateAnswer(cIdx, qIdx, e.target.value)}
+                                  >
+                                    <option value="" disabled>-</option>
+                                    {q.isFinal ? (
+                                      <>
+                                          <option value="подходит">ПОДХОДИТ</option>
+                                          <option value="возможно подходит">ВОЗМОЖНО</option>
+                                          <option value="не подходит">НЕ ПОДХОДИТ</option>
+                                      </>
+                                    ) : (
+                                      <>
+                                          <option value="да">ВЕРНО</option>
+                                          <option value="нет">НЕВЕРНО</option>
+                                          <option value="50/50">50 / 50</option>
+                                      </>
+                                    )}
+                                  </select>
+                                )}
                               </td>
                             ))}
                           </tr>
