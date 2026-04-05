@@ -61,7 +61,6 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Основной массив вопросов (Интро добавлено в начало)
         const QUESTIONS = [
           { q: "Представьтесь, пожалуйста, расскажите о себе: как вас зовут и сколько вам лет?", isIntro: true },
           { q: "Разрешено ли публиковать объявление с покупкой/продажей «Пустого номера»?", a: "Нет, продажа пустого номера запрещена и наказывается 11-м пунктом правил." },
@@ -130,15 +129,14 @@
           const handleTopScroll = () => { if (tableScrollRef.current) tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft; };
           const handleTableScroll = () => { if (topScrollRef.current) topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft; };
 
+          // Убрано лишнее окно ввода имени рекрутера
           const addSession = () => {
             const seniorLogin = prompt('Введите Логин сеньора:');
             if (!seniorLogin) return;
-            const name = prompt('Введите Имя рекрутера:');
-            if (!name) return;
             
             db.ref('recruitment_sessions/' + seniorLogin).set({
               id: seniorLogin,
-              recruiter: name,
+              recruiter: seniorLogin, // По умолчанию ставим логин сеньора
               candidates: [{ id: Date.now(), name: "Логин кандидата 1", answers: {} }]
             });
             setActiveId(seniorLogin);
@@ -171,7 +169,6 @@
             let csv = "data:text/csv;charset=utf-8,\uFEFFВопрос;";
             csv += s.candidates.map(c => c.name).join(";") + "\n";
             QUESTIONS.forEach((q, qIdx) => {
-                // Очищаем текст от точек с запятой, чтобы не ломать CSV структуру
                 const rowAnswers = s.candidates.map(c => {
                     const ans = c.answers?.[qIdx] || "-";
                     return ans.replace(/;/g, ',');
@@ -246,7 +243,7 @@
                             </td>
                             <td className="p-6 sticky-col-2 bg-white">
                                 <div className={`font-bold text-slate-800 mb-2 leading-relaxed ${q.isIntro ? 'text-blue-600' : ''}`}>{q.q}</div>
-                                {q.a && <div className="text-xs bg-emerald-50 text-emerald-700 p-2 rounded border border-emerald-100 font-bold uppercase">{q.a}</div>}
+                                {q.a && <div className="text-xs bg-emerald-50 text-emerald-700 p-2 rounded border border-emerald-100 font-bold">{q.a}</div>}
                             </td>
                             {current.candidates?.map((c, cIdx) => (
                               <td key={cIdx} className="p-6 border-l align-top bg-white">
